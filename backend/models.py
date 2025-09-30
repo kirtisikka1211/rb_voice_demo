@@ -1,0 +1,89 @@
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, JSON
+from sqlalchemy.orm import relationship
+from backend.database import Base
+
+
+# ------------------- Candidate -------------------
+class Candidate(Base):
+    __tablename__ = "candidate"
+
+    candidate_id = Column(Integer, primary_key=True, index=True)
+    name = Column(Text)
+    email = Column(String, unique=True, nullable=False, index=True)
+    password_hash = Column(String, nullable=False)
+
+    # Relationships
+    agents = relationship("Agent", back_populates="candidate", cascade="all, delete-orphan")
+    responses = relationship("InterviewResponse", back_populates="candidate", cascade="all, delete-orphan")
+
+
+# ------------------- Agent / Interviewer -------------------
+class Agent(Base):
+    __tablename__ = "agent"
+
+    viewer_id = Column(Integer, primary_key=True, index=True)
+    candidate_id = Column(Integer, ForeignKey("candidate.candidate_id", ondelete="CASCADE"), nullable=False)
+    interview_type = Column(Text, nullable=False)
+    questions = Column(JSON)
+
+    # Relationships
+    candidate = relationship("Candidate", back_populates="agents")
+    responses = relationship("InterviewResponse", back_populates="interviewer", cascade="all, delete-orphan")
+
+
+# ------------------- Interview Responses -------------------
+class InterviewResponse(Base):
+    __tablename__ = "interview_responses"
+
+    response_id = Column(Integer, primary_key=True, index=True)
+    response = Column(JSON)
+    annotated_response = Column(JSON)
+    edit_count = Column(Integer)
+    last_edited_at = Column(DateTime)
+    tab_switch_count = Column(Integer)
+    validity = Column(DateTime)
+    is_completed = Column(Boolean)
+    start_time = Column(DateTime)
+    end_time = Column(DateTime)
+    is_ended = Column(Boolean)
+    is_terminated = Column(Boolean)
+    audio_url = Column(String)
+    transcription_url = Column(String)
+
+    # Foreign keys
+    candidate_id = Column(Integer, ForeignKey("candidate.candidate_id", ondelete="CASCADE"))
+    interviewer_id = Column(Integer, ForeignKey("agent.viewer_id", ondelete="SET NULL"))
+
+    # Relationships
+    candidate = relationship("Candidate", back_populates="responses")
+    interviewer = relationship("Agent", back_populates="responses")
+    feedbacks = relationship("CandidateInterviewFeedback", back_populates="response", cascade="all, delete-orphan")
+
+
+# ------------------- Feedback -------------------
+class CandidateInterviewFeedback(Base):
+    __tablename__ = "candidate_interview_feedback"
+
+    feedback_id = Column(Integer, primary_key=True, index=True)
+    response_id = Column(Integer, ForeignKey("interview_responses.response_id", ondelete="CASCADE"))
+    feedback = Column(Text)
+    satisfaction = Column(Integer)
+
+    # Relationships
+    response = relationship("InterviewResponse", back_populates="feedbacks")
+
+
+# ------------------- Files -------------------
+class FileRecord(Base):
+    __tablename__ = "files"
+
+    file_id = Column(Integer, primary_key=True, index=True)
+    candidate_id = Column(Integer, ForeignKey("candidate.candidate_id", ondelete="CASCADE"), nullable=False)
+    file_type = Column(String, nullable=False)  # e.g., 'resume' | 'jd'
+    original_filename = Column(Text, nullable=False)
+    content_type = Column(String, nullable=True)
+    storage_path = Column(Text, nullable=False)  # relative path where file is stored
+    size_bytes = Column(Integer, nullable=True)
+
+    # Relationships
+    # If needed in future, we can add: candidate = relationship("Candidate")

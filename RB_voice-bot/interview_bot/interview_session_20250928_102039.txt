@@ -1,0 +1,29 @@
+🎯 AI TECHNICAL INTERVIEW SESSION
+📅 Date: 2025-09-28 10:20:02
+⏱️  Duration: 0:00:36.871524
+🎵 Voice: cedar
+💬 Total exchanges: 4
+🎤 Input audio: 0.6 minutes
+🔊 Output audio: 0.2 minutes
+================================================================================
+
+Exchange #1 [10:20:19]
+CANDIDATE: Hello,
+INTERVIEWER: Hey there! How’s it going? You sound pretty relaxed. What’s on your mind today?
+----------------------------------------------------------------------
+
+Exchange #2 [10:20:24]
+CANDIDATE: Hey there, how's it going? You sound pretty relaxed.
+INTERVIEWER: I’m doing great, thanks for asking! And I'm glad to hear you’re feeling relaxed.
+----------------------------------------------------------------------
+
+Exchange #3 [10:20:29]
+CANDIDATE: I'm doing great. Thanks for asking.
+INTERVIEWER: That’s awesome. What’s been going on lately that’s got you feeling so good?
+----------------------------------------------------------------------
+
+Exchange #4 [10:20:35]
+CANDIDATE: That's awesome. What's been going on lately that's got you feeling so good?
+INTERVIEWER: I love that question. Well, I’ve been enjoying the peaceful vibe today. How about you? Anything fun or exciting that
+----------------------------------------------------------------------
+

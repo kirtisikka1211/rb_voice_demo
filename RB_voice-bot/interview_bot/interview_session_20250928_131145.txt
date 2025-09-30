@@ -1,0 +1,29 @@
+🎯 AI TECHNICAL INTERVIEW SESSION
+📅 Date: 2025-09-28 13:11:02
+⏱️  Duration: 0:00:43.325527
+🎵 Voice: cedar
+💬 Total exchanges: 4
+🎤 Input audio: 0.5 minutes
+🔊 Output audio: 0.3 minutes
+================================================================================
+
+Exchange #1 [13:11:10]
+CANDIDATE: Hello
+INTERVIEWER: Good afternoon, Kirti! I'm Cedar, conducting your Software Engineer interview today. Please give me
+----------------------------------------------------------------------
+
+Exchange #2 [13:11:17]
+CANDIDATE: Good afternoon, Kirti. I'm Cedar, conducting your
+INTERVIEWER: Sure, Kirti, let's dive right in. Please give me a brief overview of your background and experience.
+----------------------------------------------------------------------
+
+Exchange #3 [13:11:28]
+CANDIDATE: Sure, Kirti, let's dive right in. Please give me a brief overview of your background and experience. Hi, my name is Keerti and I'm an engineer.
+INTERVIEWER: Hi Kirti, great to meet you. Take your time and tell me a bit more about your background
+----------------------------------------------------------------------
+
+Exchange #4 [13:11:34]
+CANDIDATE: Hi, Kirti. Great to meet you. Take your time.
+INTERVIEWER: Thanks, Kirti. Let's do this step-by-step. Please share a brief overview of your background and the key
+----------------------------------------------------------------------
+

@@ -1,0 +1,30 @@
+{
+  "interview_metadata": {
+    "date": "2025-09-28 10:25:42",
+    "duration_planned": "5 minutes",
+    "voice_used": "marin",
+    "total_exchanges": 4,
+    "final_phase": "introduction"
+  },
+  "overall_assessment": {
+    "score": 2,
+    "feedback_summary": "The interview was largely unsuccessful due to significant communication barriers, as the conversation was dominated by misunderstandings and language switching. The candidate did not demonstrate any technical competency due to the lack of content in the exchange. Overall, the session was marked by confusion and an inability to progress past the introduction phase."
+  },
+  "technical_competency": {
+    "score": 1,
+    "feedback": "There was no opportunity to evaluate technical skills due to the incomplete and interrupted nature of the conversation. The candidate's resume suggests a strong background in AI and software development, but this was not reflected in the interview."
+  },
+  "communication_assessment": {
+    "score": 1,
+    "sentiment": {
+      "overall_sentiment": "negative",
+      "confidence_level": "high"
+    },
+    "feedback": "The communication was severely hampered by constant interruptions and language confusion, resulting in a failure to establish a coherent dialogue. The candidate repeated phrases and did not exhibit any clear speech patterns, confidence, or fluency. The interview did not progress beyond the initial greetings, indicating significant communication challenges."
+  },
+  "evaluation_metadata": {
+    "timestamp": "2025-09-28T10:26:18.745975",
+    "evaluation_type": "transcript_only",
+    "duration_seconds": 34.422363
+  }
+}

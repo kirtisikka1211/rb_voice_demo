@@ -1,0 +1,39 @@
+🎯 AI TECHNICAL INTERVIEW SESSION
+📅 Date: 2025-09-28 13:14:08
+⏱️  Duration: 0:01:04.514406
+🎵 Voice: marin
+💬 Total exchanges: 6
+🎤 Input audio: 0.9 minutes
+🔊 Output audio: 0.4 minutes
+================================================================================
+
+Exchange #1 [13:14:19]
+CANDIDATE: Hello
+INTERVIEWER: Good afternoon, Kirti! I'm Marin, conducting your Software Engineer interview today.
+----------------------------------------------------------------------
+
+Exchange #2 [13:14:25]
+CANDIDATE: Good afternoon, Kirti. I'm Maren, conducting your
+INTERVIEWER: Please give me a brief overview of your background and experience.
+----------------------------------------------------------------------
+
+Exchange #3 [13:14:31]
+CANDIDATE: Please give me a brief overview of your background and experience.
+INTERVIEWER: Sure. From what I know, you're currently pursuing a B.Tech in Computer Science with a focus on AI at Amrita
+----------------------------------------------------------------------
+
+Exchange #4 [13:14:40]
+CANDIDATE: Hello.
+INTERVIEWER: Hello again, Kirti! Let's dive in. Please give me a brief overview of your
+----------------------------------------------------------------------
+
+Exchange #5 [13:14:55]
+CANDIDATE: Hello again, Kirti. Let's dive in. I'm a software engineer intern in YLogx from past one year and I've worked in various fields.
+INTERVIEWER: Thanks for sharing that, Kirti. I'd love to hear more about one of your key projects. Let's talk about your work on the CadIntel
+----------------------------------------------------------------------
+
+Exchange #6 [13:15:02]
+CANDIDATE: Thanks for sharing that, Kirti. I'd love to hear more about one of your key projects. Let's talk
+INTERVIEWER: Sure, Kirti. Let’s talk about the CadIntel project. Could you walk
+----------------------------------------------------------------------
+

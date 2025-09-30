@@ -1,0 +1,30 @@
+{
+  "interview_metadata": {
+    "date": "2025-09-28 10:23:57",
+    "duration_planned": "5 minutes",
+    "voice_used": "cedar",
+    "total_exchanges": 8,
+    "final_phase": "introduction"
+  },
+  "overall_assessment": {
+    "score": 2,
+    "feedback_summary": "The interview was largely unsuccessful due to a failure in communication. The candidate repeatedly echoed the interviewer's prompts instead of providing personal insights or relevant information. This lack of engagement and responsiveness significantly hindered the assessment of both technical and behavioral competencies. The candidate's inability to articulate their background or experience suggests a major weakness in communication skills, which overshadowed any technical strengths."
+  },
+  "technical_competency": {
+    "score": 1,
+    "feedback": "The interview did not provide any opportunity to evaluate technical skills due to the candidate's inability to respond appropriately to the interviewer's questions. Despite having a strong resume with relevant skills in AI, machine learning, and full-stack development, the candidate failed to demonstrate any technical knowledge or problem-solving ability during the interview."
+  },
+  "communication_assessment": {
+    "score": 1,
+    "sentiment": {
+      "overall_sentiment": "negative",
+      "confidence_level": "high"
+    },
+    "feedback": "The candidate's communication was severely lacking, characterized by repeated mirroring of the interviewer's questions without providing any original content. There was no evidence of filler words, hesitations, or emotional markers, but this was due to the absence of meaningful dialogue rather than fluency. The candidate displayed no confidence or clarity, resulting in a very poor communication flow."
+  },
+  "evaluation_metadata": {
+    "timestamp": "2025-09-28T10:24:59.172649",
+    "evaluation_type": "transcript_only",
+    "duration_seconds": 52.362989
+  }
+}

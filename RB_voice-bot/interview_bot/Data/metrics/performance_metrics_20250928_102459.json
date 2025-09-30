@@ -1,0 +1,39 @@
+{
+  "session_metadata": {
+    "timestamp": "2025-09-28 10:23:57",
+    "session_duration_seconds": 61.471345,
+    "voice_model": "cedar",
+    "interview_mode": true,
+    "total_exchanges": 8
+  },
+  "performance_metrics": {
+    "latency": {
+      "average_response_time_seconds": 1.37,
+      "total_responses": 8
+    },
+    "audio_metrics": {
+      "input_chunks_sent": 2211,
+      "output_chunks_received": 104,
+      "total_input_bytes": 2264064,
+      "total_output_bytes": 1152000
+    }
+  },
+  "raw_metrics": {
+    "response_times": [
+      1.3012971878051758,
+      1.2786839008331299,
+      1.1552650928497314,
+      1.2988371849060059,
+      1.5550010204315186,
+      1.5317671298980713,
+      1.366891860961914,
+      1.50954008102417
+    ],
+    "audio_chunks_sent": 2211,
+    "audio_chunks_received": 104,
+    "total_audio_input_bytes": 2264064,
+    "total_audio_output_bytes": 1152000,
+    "connection_errors": 0,
+    "transcription_errors": 0
+  }
+}
