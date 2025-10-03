@@ -71,38 +71,24 @@ const Layout: React.FC<LayoutProps> = ({ children, userEmail, onLogout }) => {
             
             {/* Recruiter Navigation Items */}
             <div className="space-y-1">
-              <button
+              {/* <button
                 onClick={() => navigate('/recruiter')}
                 className="w-full flex items-center px-2 py-1.5 rounded text-white hover:bg-white/10 transition-colors"
                 title="Technical Questions"
               >
                 <FileText size={16} />
                 {!isCollapsed && <span className="text-sm ml-2">Technical Questions</span>}
-              </button>
+              </button> */}
               <button
-                onClick={() => navigate('/pre-screen-recruiter')}
+                onClick={() => navigate('/webRTC')}
                 className="w-full flex items-center px-2 py-1.5 rounded text-white hover:bg-white/10 transition-colors"
                 title="Pre-Screen Questions"
               >
                 <Mic size={16} />
                 {!isCollapsed && <span className="text-sm ml-2">Pre-Screen Questions</span>}
               </button>
-              <button
-                onClick={() => navigate('/candidate-dashboard')}
-                className="w-full flex items-center px-2 py-1.5 rounded text-white hover:bg-white/10 transition-colors"
-                title="Candidate Dashboard"
-              >
-                <User size={16} />
-                {!isCollapsed && <span className="text-sm ml-2">Candidate Dashboard</span>}
-              </button>
-              <button
-                onClick={() => navigate('/home-modern')}
-                className="w-full flex items-center px-2 py-1.5 rounded text-white hover:bg-white/10 transition-colors"
-                title="Modern Landing"
-              >
-                <Zap size={16} />
-                {!isCollapsed && <span className="text-sm ml-2">Modern Landing</span>}
-              </button>
+              
+              
               <button
                 onClick={() => navigate('/recruiter-dashboard')}
                 className="w-full flex items-center px-2 py-1.5 rounded text-white hover:bg-white/10 transition-colors"

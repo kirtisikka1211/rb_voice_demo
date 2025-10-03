@@ -8,6 +8,8 @@ import {
   XCircle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import AudioRealtimeClient from '../services/audioWebSocket';
+import { apiService } from '../services/api';
 
 interface InterviewQuestion {
   id: number;
@@ -81,59 +83,29 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ userEmail: _userEmail, on
   const [shouldHideMic, setShouldHideMic] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [fetchedPreScreenQuestions, setFetchedPreScreenQuestions] = useState<InterviewQuestion[] | null>(null);
+  const audioClientRef = useRef<AudioRealtimeClient | null>(null);
+  const [wsConnected, setWsConnected] = useState(false);
 
   useEffect(() => {
-    // Initialize with bot greeting based on interview type
-    if (interviewType === 'technical') {
-      setChatMessages([
-        {
-          id: '1',
-          type: 'bot',
-          content: "Welcome to the technical interview! You have 30 minutes to work on the problem. Good luck!",
-          timestamp: new Date(),
-          status: 'sent'
-        }
-      ]);
-    } else {
-      setChatMessages([
-        {
-          id: '1',
-          type: 'bot',
-          content: "Hello! I'm your AI interviewer. I'll be asking you a few questions to understand your background and experience.",
-          timestamp: new Date(),
-          status: 'sent'
-        }
-      ]);
-    }
-  }, [interviewType]);
-
-  useEffect(() => {
-    // Fetch pre-screen questions from backend
-    if (interviewType !== 'pre-screen') return;
-    (async () => {
-      try {
-        const res = await fetch('http://localhost:8000/questions?interview_type=pre_screen');
-        if (!res.ok) return;
-        const data = await res.json();
-        // Expecting an array of rows with a `questions` array
-        const questionsArray = Array.isArray(data) && data.length > 0 ? (data[0]?.questions || []) : [];
-        if (Array.isArray(questionsArray)) {
-          const normalized: InterviewQuestion[] = questionsArray.map((q: any, idx: number) => ({
-            id: idx + 1,
-            question: typeof q === 'string' ? q : (q?.question ?? '')
-          })).filter(q => q.question && String(q.question).trim().length > 0);
-          if (normalized.length > 0) setFetchedPreScreenQuestions(normalized);
-        }
-      } catch (e) {
-      
+    // Initial system message only; live bot handles speaking
+    setChatMessages([
+      {
+        id: 'system-welcome',
+        type: 'system',
+        content: interviewType === 'technical' ? 'Technical interview. Click to start when ready.' : 'Interview. Click to start when ready.',
+        timestamp: new Date(),
+        status: 'sent'
       }
-    })();
+    ]);
   }, [interviewType]);
+
+  // Removed local question fetching; live bot manages the conversation
+  useEffect(() => {}, [interviewType]);
 
   useEffect(() => {
     // Technical interview countdown timer
     if (!(isRecording && interviewType === 'technical')) return;
-    let interval: NodeJS.Timeout;
+    let interval: number;
     interval = setInterval(() => {
       setTechnicalTimeRemaining(prev => {
         if (prev <= 1) {
@@ -152,8 +124,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ userEmail: _userEmail, on
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages, liveTranscript]);
 
-  // Prefer fetched questions; fallback to mocks
-  const preQuestions: InterviewQuestion[] = fetchedPreScreenQuestions ?? mockQuestions;
+  // No local questions; live bot manages the dialogue
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -161,152 +132,71 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ userEmail: _userEmail, on
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const toggleRecording = () => {
+  const toggleRecording = async () => {
     if (!isRecording) {
-      // Start recording and begin interview flow
       setIsRecording(true);
-      
-      if (interviewType === 'pre-screen') {
-        // For pre-screen interview, start the automatic question flow (now using backend questions if available)
-        
-        // Function to show question and answer
-        const showQuestionAndAnswer = (index: number) => {
-          if (index >= preQuestions.length) {
-            // Interview is over, bot asks if candidate has questions
-            setTimeout(() => {
-              setChatMessages(prev => [...prev, {
-                id: Date.now().toString() + 'interview-over',
-                type: 'bot',
-                content: "Great! That concludes our interview. Do you have any questions for me?",
-                timestamp: new Date(),
-                status: 'sent'
-              }]);
-              
-              // Candidate says no after 2 seconds
-              setTimeout(() => {
-                setChatMessages(prev => [...prev, {
-                  id: Date.now().toString() + 'candidate-no',
-                  type: 'user',
-                  content: "No, I don't have any questions. Thank you.",
-                  timestamp: new Date(),
-                  status: 'sent'
-                }]);
-                
-                // Bot wishes good luck after 1 second
-                setTimeout(() => {
-                  // Hide mic as soon as the AI says goodbye
-                  setShouldHideMic(true);
-                  setChatMessages(prev => [...prev, {
-                    id: Date.now().toString() + 'bot-goodbye',
-                    type: 'bot',
-                    content: "Perfect! Thank you for your time. I wish you the best of luck with your application. Have a great day!",
-                    timestamp: new Date(),
-                    status: 'sent'
-                  }]);
-                  
-                  // Show complete interview popup after 1 second
-                  setTimeout(() => {
-                    setShowCompletePopup(true);
-                  }, 1000);
-                }, 1000);
-              }, 2000);
-            }, 1000);
-            return;
-          }
-          
-          // Show question
-          setChatMessages(prev => [...prev, {
-            id: Date.now().toString() + index,
-            type: 'bot',
-            content: preQuestions[index].question,
-            timestamp: new Date(),
-            status: 'sent'
-          }]);
-          
-          // Update current question
-          setCurrentQuestion(index);
-          
-          // Show answer after 2 seconds
-          setTimeout(() => {
-            const answer = getMockAnswer(index);
-            
-            // Save answer directly to chat (no live transcript needed)
-            setChatMessages(prev => [...prev, {
-              id: Date.now().toString() + index + 'answer',
-              type: 'user',
-              content: answer,
-              timestamp: new Date(),
-              status: 'sent'
-            }]);
-            
-            // Show next question after 2 more seconds
-            setTimeout(() => {
-              showQuestionAndAnswer(index + 1);
-            }, 2000);
-          }, 2000);
-        };
-        
-        // Start with first question
-        showQuestionAndAnswer(0);
-      } else {
-        // For technical interview, run an automatic Q&A flow similar to pre-screen
-
-        const showTechQuestionAndAnswer = (index: number) => {
-          if (index >= technicalQuestions.length) {
-            // Wrap up the technical session
-            setTimeout(() => {
-              setChatMessages(prev => [...prev, {
-                id: Date.now().toString() + 'technical-over',
-                type: 'bot',
-                content: "Great! That concludes the technical interview.",
-                timestamp: new Date(),
-                status: 'sent'
-              }]);
-              // Stop recording, hide mic, and show completion popup
-              setTimeout(() => {
-                setIsRecording(false);
-                setShouldHideMic(true);
-                setShowCompletePopup(true);
-              }, 1000);
-            }, 500);
-            return;
-          }
-
-          // Show question
-          setChatMessages(prev => [...prev, {
-            id: Date.now().toString() + 't' + index,
-            type: 'bot',
-            content: technicalQuestions[index].question,
-            timestamp: new Date(),
-            status: 'sent'
-          }]);
-
-          // Track progress index
-          setCurrentQuestion(index);
-
-          // Show answer after 2 seconds
-          setTimeout(() => {
-            const answer = getTechnicalAnswer(index);
-            setChatMessages(prev => [...prev, {
-              id: Date.now().toString() + 't' + index + 'answer',
-              type: 'user',
-              content: answer,
-              timestamp: new Date(),
-              status: 'sent'
-            }]);
-
-            // Next question after 2 seconds
-            setTimeout(() => showTechQuestionAndAnswer(index + 1), 2000);
-          }, 2000);
-        };
-
-        // Start technical flow
-        showTechQuestionAndAnswer(0);
+      try {
+        // Debug: show what is being sent to AI
+        const resumeTxt = sessionStorage.getItem('rb_resume_txt') || '';
+        const jdTxt = sessionStorage.getItem('rb_jd_txt') || '';
+        const qDictRaw = sessionStorage.getItem('rb_questions_dict');
+        const qDict = qDictRaw ? JSON.parse(qDictRaw) : undefined;
+        console.log('[AI Debug] resume_txt length:', resumeTxt.length);
+        console.log('[AI Debug] jd_txt length:', jdTxt.length);
+        console.log('[AI Debug] questions_dict keys:', qDict ? Object.keys(qDict).length : 0);
+        console.log('[AI Debug] resume_txt preview:', resumeTxt.slice(0, 300));
+        console.log('[AI Debug] jd_txt preview:', jdTxt.slice(0, 300));
+        // Optionally re-trigger start (idempotent) if needed for debugging
+        if (interviewType === 'technical' && (resumeTxt || jdTxt)) {
+          apiService.startBot({ resume_txt: resumeTxt, jd_txt: jdTxt, questions_dict: qDict }).catch(() => {});
+        }
+      } catch {}
+      // Establish realtime connection and start capture only for technical mode
+      if (interviewType === 'technical') {
+        const client = new AudioRealtimeClient((evt) => {
+          try {
+            if (evt?.type === 'response.delta' && typeof evt?.delta === 'string') {
+              setLiveTranscript(prev => prev + evt.delta);
+            }
+            if (evt?.type === 'response.output_text.delta' && typeof evt?.delta === 'string') {
+              setLiveTranscript(prev => prev + evt.delta);
+            }
+            // You can handle audio events here if you want to play audio sent by server as JSON
+          } catch {}
+        });
+        audioClientRef.current = client;
+        client.connect().then(() => {
+          setWsConnected(true);
+          return client.startCapture(48000);
+        }).catch(() => {
+          setWsConnected(false);
+        });
       }
+
+      setChatMessages(prev => [
+        ...prev,
+        {
+          id: Date.now().toString() + '-ai-start',
+          type: 'system',
+          content: 'AI is now active. You can begin speaking.',
+          timestamp: new Date(),
+          status: 'sent'
+        }
+      ]);
     } else {
-      // Stop recording
       setIsRecording(false);
       setLiveTranscript('');
+      // Stop capture and request response if technical
+      if (interviewType === 'technical') {
+        const c = audioClientRef.current;
+        audioClientRef.current = null;
+        if (c) {
+          try { await c.stopCapture(); } catch {}
+          try { c.commitAndCreateResponse({ voice: 'alloy', instructions: 'Answer concisely.' }); } catch {}
+          // Delay a bit before closing to allow events to flow
+          setTimeout(() => { c.disconnect().catch(() => {}); setWsConnected(false); }, 1500);
+        }
+      }
     }
   };
 
@@ -314,22 +204,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ userEmail: _userEmail, on
 
   const completeInterview = () => {
     setIsRecording(false);
-    
-    // Generate script with exactly 5 mock Q&A mapped to questions
-    const script = {
-      type: 'pre-screen' as const,
-      questions: preQuestions.map((q, index) => ({
-        ...q,
-        answer: getMockAnswer(index),
-        duration: Math.floor(Math.random() * 120) + 30
-      })),
-      totalDuration: 0, // No timer for pre-screen interview
-      feedback: "Strong communication skills demonstrated throughout the interview. Good technical knowledge and problem-solving approach.",
-      timestamp: new Date().toLocaleString(),
-      version: 1
-    };
-    
-    onComplete(script);
+    onComplete({ type: 'pre-screen', version: 1, timestamp: new Date().toLocaleString() });
     navigate('/interview/completed?type=pre-screen');
   };
 
@@ -337,41 +212,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ userEmail: _userEmail, on
 
   const completeTechnicalInterview = () => {
     setIsRecording(false);
-    
-    // Generate structured Q&A data for technical interview
-    const questions = technicalQuestions.map((q, index) => ({
-      ...q,
-      answer: getTechnicalAnswer(index),
-      duration: Math.floor(Math.random() * 120) + 60
-    }));
-    const totalDuration = questions.reduce((acc, q) => acc + (q.duration || 0), 0);
-    
-    // Keep transcript for backward compatibility, but now we have structured Q&A
-    let transcript = chatMessages
-      .filter(m => m.type === 'bot' || m.type === 'user')
-      .map(m => `${m.type === 'bot' ? 'AI' : 'You'}: ${m.content}`)
-      .join('\n');
-    if (!transcript || transcript.trim().length === 0) {
-      // Fallback to AI/You formatted log from questions/answers
-      transcript = technicalQuestions
-        .map((q, idx) => {
-          const answer = getTechnicalAnswer(idx);
-          return `AI: ${q.question}\nYou: ${answer}`;
-        })
-        .join('\n');
-    }
-    
-    const script = {
-      type: 'technical' as const,
-      questions, // Now includes structured Q&A data
-      totalDuration,
-      feedback: "Technical interview completed. Candidate demonstrated problem-solving skills.",
-      timestamp: new Date().toLocaleString(),
-      transcript, // Keep for backward compatibility
-      version: 1
-    };
-    
-    onComplete(script);
+    onComplete({ type: 'technical', version: 1, timestamp: new Date().toLocaleString() });
     navigate('/interview/completed?type=technical');
   };
 
@@ -401,20 +242,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ userEmail: _userEmail, on
               </span>
             </div>
           )}
-          {interviewType === 'pre-screen' && (
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-600">Question {currentQuestion + 1} of {mockQuestions.length}</span>
-              <div className="flex items-center space-x-1">
-                {mockQuestions.map((_, index) => (
-                  <div key={index} className={`w-2 h-2 rounded-full ${
-                    index < currentQuestion ? 'bg-green-500' :
-                    index === currentQuestion ? 'bg-blue-500' :
-                    'bg-gray-300'
-                  }`} />
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Pre-screen progress removed */}
           {interviewType === 'technical' && (
             <div className="flex items-center space-x-2">
               <span className="text-sm text-gray-600">Technical Interview</span>
@@ -488,9 +316,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ userEmail: _userEmail, on
             <div className="text-sm text-gray-600">
               { (showCompletePopup || shouldHideMic)
                 ? 'Interview completed!'
-                : interviewType === 'pre-screen'
-                  ? (currentQuestion < mockQuestions.length ? (isRecording ? 'Recording ...' : 'Click to start') : 'Interview complete')
-                  : (isRecording ? 'Recording ...' : 'Click to start')
+                : (isRecording ? 'Recording ...' : 'Click to start')
               }
             </div>
           </div>

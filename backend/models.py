@@ -80,10 +80,34 @@ class FileRecord(Base):
     file_id = Column(Integer, primary_key=True, index=True)
     candidate_id = Column(Integer, ForeignKey("candidate.candidate_id", ondelete="CASCADE"), nullable=False)
     file_type = Column(String, nullable=False)  # e.g., 'resume' | 'jd'
-    original_filename = Column(Text, nullable=False)
-    content_type = Column(String, nullable=True)
-    storage_path = Column(Text, nullable=False)  # relative path where file is stored
-    size_bytes = Column(Integer, nullable=True)
+    question = Column(Text)
+    linkedin_url = Column(Text)
+    storage_path = Column(Text, nullable=False)  # relative path or public URL
+    uploaded_at = Column(DateTime)
+    jd = Column(JSON)  # { title, description }
+    session_id = Column(Integer)
 
     # Relationships
     # If needed in future, we can add: candidate = relationship("Candidate")
+
+
+# ------------------- Resume -------------------
+class Resume(Base):
+    __tablename__ = "resume"
+
+    resume_id = Column(Integer, primary_key=True, index=True)
+    resume_path = Column(Text, nullable=False)
+    uploaded_at = Column(DateTime)
+
+
+# ------------------- Recruiter -------------------
+class Recruiter(Base):
+    __tablename__ = "recruiter"
+
+    jd_id = Column(Integer, primary_key=True, index=True)
+    resume_id = Column(Integer, ForeignKey("resume.resume_id", ondelete="CASCADE"))
+    jd = Column(JSON)  # { title, description }
+    jd_file_path = Column(Text)
+    questions = Column(JSON)
+    linkedin_url = Column(Text)
+    created_at = Column(DateTime)

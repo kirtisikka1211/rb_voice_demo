@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Bot, Loader2 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { apiService } from '../services/api';
 
 interface PreparingPageProps {
   userEmail: string;
@@ -12,6 +13,7 @@ const PreparingPage: React.FC<PreparingPageProps> = ({ userEmail }) => {
   const interviewType = searchParams.get('type') || 'pre-screen';
 
   useEffect(() => {
+    // No backend bot preload. Realtime session will be configured on connect from InterviewPage.
     const timer = setTimeout(() => {
       navigate(`/interview/active?type=${interviewType}`);
     }, 3000);

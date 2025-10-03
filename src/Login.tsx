@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import apiService from './services/api';
 import { Bot, User, Lock, Eye, EyeOff } from 'lucide-react';
 
 interface LoginProps {
@@ -8,11 +9,13 @@ interface LoginProps {
 
 function Login({ onLogin, isLoading = false }: LoginProps) {
   const [formData, setFormData] = useState({
+    name: '',
     email: '',
     password: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [isSignup, setIsSignup] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -47,9 +50,17 @@ function Login({ onLogin, isLoading = false }: LoginProps) {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (validateForm()) {
+    if (!validateForm()) return;
+    if (isSignup) {
+      try {
+        await apiService.signup({ name: formData.name || undefined, email: formData.email, password: formData.password });
+        onLogin(formData.email, formData.password);
+      } catch (err) {
+        console.error('Signup failed', err);
+      }
+    } else {
       onLogin(formData.email, formData.password);
     }
   };
@@ -67,13 +78,32 @@ function Login({ onLogin, isLoading = false }: LoginProps) {
         {/* Login Form */}
         <div className="bg-white rounded-xl shadow-xl border border-gray-200 p-6">
           <div className="text-center mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-1">Welcome Back</h2>
-            <p className="text-sm text-gray-600">Sign in to access your interview</p>
+            <h2 className="text-xl font-semibold text-gray-900 mb-1">{isSignup ? 'Create your account' : 'Welcome Back'}</h2>
+            <p className="text-sm text-gray-600">{isSignup ? 'Sign up to get started' : 'Sign in to access your interview'}</p>
           </div>
 
           
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Name Field (Signup only) */}
+            {isSignup && (
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                  Full Name (optional)
+                </label>
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  className={`w-full px-3 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors border-gray-300`}
+                  placeholder="Your name"
+                  disabled={isLoading}
+                />
+              </div>
+            )}
+
             {/* Email Field */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
@@ -173,10 +203,10 @@ function Login({ onLogin, isLoading = false }: LoginProps) {
               {isLoading ? (
                 <div className="flex items-center justify-center space-x-2">
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Signing in...</span>
+                  <span>{isSignup ? 'Creating account...' : 'Signing in...'}</span>
                 </div>
               ) : (
-                'Sign In'
+                (isSignup ? 'Sign Up' : 'Sign In')
               )}
             </button>
           </form>
@@ -184,10 +214,17 @@ function Login({ onLogin, isLoading = false }: LoginProps) {
           {/* Help Links */}
           <div className="mt-5 text-center">
             <p className="text-sm text-gray-600">
-              Don't have an account?{' '}
-              <a href="#" className="font-medium text-blue-600 hover:text-blue-500 transition-colors">
-                Contact your recruiter
-              </a>
+              {isSignup ? (
+                <>
+                  Already have an account?{' '}
+                  <button onClick={() => setIsSignup(false)} className="font-medium text-blue-600 hover:text-blue-500 transition-colors">Sign in</button>
+                </>
+              ) : (
+                <>
+                  Don't have an account?{' '}
+                  <button onClick={() => setIsSignup(true)} className="font-medium text-blue-600 hover:text-blue-500 transition-colors">Create one</button>
+                </>
+              )}
             </p>
           </div>
 

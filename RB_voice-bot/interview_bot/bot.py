@@ -43,7 +43,7 @@ class InterviewBot:
         self.language = language
         self.interview_duration = interview_duration
         self.websocket = None
-
+        print
         # Reuse AudioManager
         self.audio_manager = AudioManager(sample_rate=24000, chunk_size=512)
         self.input_stream = None
@@ -393,9 +393,9 @@ class InterviewBot:
             # Session configuration optimized for interview accuracy
             turn_detection_config = {
                 "type": "server_vad",
-                "threshold": 0.45, # Slightly less sensitive for cleaner audio
-                "prefix_padding_ms": 800,  # More padding for complete speech capture
-                "silence_duration_ms": 1200, # Longer pause for technical explanations
+                "threshold": 0.76, # Slightly less sensitive for cleaner audio
+                "prefix_padding_ms": 900,  # More padding for complete speech capture
+                "silence_duration_ms": 1500, # Longer pause for technical explanations
                 "create_response": True
             }
             
@@ -409,7 +409,16 @@ class InterviewBot:
                 }
 
             # Enhanced transcription optimized for technical accuracy
-            transcription_prompt = "PRIORITY: Technical accuracy and clarity. Transcribe exactly what is spoken with focus on: 1) Technical terms (SQL, Python, API, database, etc.) - spell correctly 2) Company/project names - capitalize properly 3) Numbers and metrics - transcribe precisely 4) Keep natural speech patterns: um, uh, like, you know, so, well, actually, basically 5) Mark hesitations with (...) 6) Show repetitions: I, I mean 7) Mark false starts: I was—I mean 8) NEVER add content not spoken 9) NEVER clean up or interpret - raw speech only 10) For unclear technical terms, use phonetic spelling in [brackets] if needed. Focus on accuracy over emotional markers."
+            transcription_prompt = """PRIORITY:
+    1 Transcribe ONLY clear speech. If audio is unclear or contains only noise, return empty. Never guess or add words not clearly spoken.
+    2. Keep natural speech patterns: um, uh, like, you know, so, well, actually, basically
+    3) Mark hesitations with (...)
+    4) Show repetitions: I, I mean
+    5) Mark false starts: I was—I mean
+    6) NEVER add content not spoken
+    7) NEVER clean up or interpret - raw speech only
+    8) Focus on accuracy over emotional markers.
+    """
 
             session_config = {
                 "type": "session.update",
@@ -702,4 +711,3 @@ INTERVIEW METADATA:
             except Exception:
                 pass
         print("✅ Cleanup complete")
-

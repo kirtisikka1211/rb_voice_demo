@@ -3,16 +3,17 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useSearchParams } fro
 import Login from './Login';
 import Layout from './components/Layout';
 import LandingPage from './components/LandingPage';
-import ModernLandingPage from './components/ModernLandingPage';
+// import ModernLandingPage from './components/ModernLandingPage';
 import CandidateDashboard from './components/CandidateDashboard';
 import RecruiterDashboard from './components/RecruiterDashboard';
 import IdlePage from './components/IdlePage';
 import PreparingPage from './components/PreparingPage';
 import InterviewPage from './components/InterviewPage';
 import CompletedPage from './components/CompletedPage';
-import RecruiterPage from './components/RecruiterPage';
-import PreScreenRecruiterPage from './components/PreScreenRecruiterPage';
+// import RecruiterPage from './components/RecruiterPage';
+// import PreScreenRecruiterPage from './components/PreScreenRecruiterPage';
 import apiService from './services/api';
+import InterviewWebRTC from './components/InterviewWebRTC';
 
 interface InterviewScript {
   questions?: Array<{
@@ -193,7 +194,7 @@ function App() {
           />
 
           {/* New Modern Landing Route */}
-          <Route 
+          {/* <Route 
             path="/home-modern" 
             element={
               !userEmail ? (
@@ -204,7 +205,7 @@ function App() {
                 </Layout>
               )
             } 
-          />
+          /> */}
 
           <Route 
             path="/interview/idle" 
@@ -268,7 +269,7 @@ function App() {
           />
 
           {/* Recruiter Route */}
-          <Route 
+          {/* <Route 
             path="/recruiter" 
             element={
               !userEmail ? (
@@ -283,19 +284,19 @@ function App() {
 
           {/* Pre-Screen Recruiter Route */}
           <Route 
-            path="/pre-screen-recruiter" 
+            path="/webRTC" 
             element={
               !userEmail ? (
                 <Navigate to="/login" replace />
               ) : (
                 <Layout userEmail={userEmail} onLogout={handleLogout}>
-                  <PreScreenRecruiterPage />
+                  <InterviewWebRTC/>
                 </Layout>
               )
             } 
-          />
+          /> 
 
-          {/* Candidate Dashboard */}
+      
           <Route 
             path="/candidate-dashboard" 
             element={

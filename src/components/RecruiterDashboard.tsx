@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, FileText, MessageSquare, Settings, Upload } from 'lucide-react';
 import FileUpload from './FileUpload';
+import { apiService } from '../services/api';
 
 const Button: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement>> = ({ className = '', children, ...props }) => (
   <button {...props} className={`inline-flex items-center justify-center rounded-md bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 ${className}`}>{children}</button>
@@ -40,20 +42,22 @@ function SegmentedTabs({ value, onChange }: { value: 'jobs' | 'questions' | 'pro
       <button className={`${base} ${value==='jobs'?selected:unselected}`} onClick={() => onChange('jobs')}>
         <FileText className="w-4 h-4" /> Job Descriptions
       </button>
+      <button className={`${base} ${value==='candidates'?selected:unselected}`} onClick={() => onChange('candidates')}>
+        <FileText className="w-4 h-4" /> Candidate Info
+      </button>
       <button className={`${base} ${value==='questions'?selected:unselected}`} onClick={() => onChange('questions')}>
         <MessageSquare className="w-4 h-4" /> Questions
       </button>
       <button className={`${base} ${value==='prompts'?selected:unselected}`} onClick={() => onChange('prompts')}>
         <Settings className="w-4 h-4" /> Custom Prompts
       </button>
-      <button className={`${base} ${value==='candidates'?selected:unselected}`} onClick={() => onChange('candidates')}>
-        <FileText className="w-4 h-4" /> Candidate Info
-      </button>
+
     </div>
   );
 }
 
 export default function RecruiterDashboard() {
+  const navigate = useNavigate();
   const [jobTitle, setJobTitle] = useState('');
   const [jobDescription, setJobDescription] = useState('');
   const [customPrompt, setCustomPrompt] = useState('');
@@ -79,14 +83,48 @@ export default function RecruiterDashboard() {
   const [customQuestions, setCustomQuestions] = useState<{ id: number; question: string }[]>([]);
   const [candidateMode, setCandidateMode] = useState<'resume' | 'linkedin'>('resume');
   const [linkedinProfile, setLinkedinProfile] = useState('');
+  const [jdUploads, setJdUploads] = useState<Array<{ file_id: number; storage_path: string }>>([]);
+  const [resumeUploads, setResumeUploads] = useState<Array<{ file_id: number; storage_path: string }>>([]);
+  const [questionUploads, setQuestionUploads] = useState<Array<{ file_id: number; storage_path: string }>>([]);
+  const candidateId = Number(localStorage.getItem('candidate_id') || '0');
+  const [resumeId, setResumeId] = useState<number | null>(null);
+  const [pendingJdFiles, setPendingJdFiles] = useState<File[]>([]);
+  const [modal, setModal] = useState<{ message: string; open: boolean; onClose?: () => void }>({ message: '', open: false });
+  const openModal = (message: string, onClose?: () => void) => setModal({ message, open: true, onClose });
+  const closeModal = () => {
+    try { modal.onClose && modal.onClose(); } catch {}
+    setModal({ message: '', open: false });
+  };
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const closePreview = () => setPreviewUrl(null);
 
-  const handleSaveJob = () => { console.log('Saving job:', { jobTitle, jobDescription }); };
+  const handleSaveJob = async () => {
+    try {
+      if (!resumeId) {
+        openModal('Please upload a resume first to generate resume_id.');
+        return;
+      }
+      await apiService.createRecruiter({
+        resumeId,
+        jdTitle: jobTitle,
+        jdDescription: jobDescription,
+        jdFile: pendingJdFiles[0] || null,
+        questionsJson: customQuestions,
+        linkedinUrl: linkedinProfile || null,
+      });
+      setPendingJdFiles([]);
+      openModal('Recruiter record ');
+    } catch (e) {
+      console.error('Failed to create recruiter record', e);
+    }
+  };
   const handleSavePrompt = () => { console.log('Saving custom prompt:', customPrompt); };
   const handleSaveQuestion = () => {
     const text = customQuestion.trim();
     if (!text) return;
-    const newItem = { id: Date.now(), question: text, category: 'Custom', type: 'Open-ended' } as const;
-    setCustomQuestions(prev => [ { id: newItem.id, question: newItem.question }, ...prev ]);
+    const nextId = customQuestions.length + 1;
+    const newItem = { id: nextId, question: text } as const;
+    setCustomQuestions(prev => [ newItem, ...prev ]);
     setCustomQuestion('');
     setExpandedQuestionId(newItem.id);
     setEditText(newItem.question);
@@ -113,15 +151,87 @@ export default function RecruiterDashboard() {
     setEditText('');
   };
 
-  const handleSaveLinkedin = () => {
-    console.log('Saving LinkedIn profile:', linkedinProfile);
+  const handleSaveLinkedin = async () => {
+    if (!candidateId) { console.warn('No candidate_id found'); return; }
+    try {
+      await apiService.saveLinkedin(candidateId, linkedinProfile.trim());
+      openModal('LinkedIn profile saved successfully.');
+    } catch (e) {
+      console.error('Failed to save LinkedIn profile', e);
+    }
   };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Recruiter Dashboard</h1>
-        <p className="text-gray-600">Manage job descriptions, questions, and interview settings</p>
+      {/* Success Modal */}
+      {modal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={closeModal}></div>
+          <div className="relative bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-sm mx-4 p-6">
+            <div className="text-center">
+              <div className="mx-auto mb-3 w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+                <svg width="24" height="24" viewBox="0 0 24 24" className="text-green-600"><path fill="currentColor" d="M9 16.2l-3.5-3.5 1.4-1.4L9 13.4l7.1-7.1 1.4 1.4z"/></svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-1">Success</h3>
+              <p className="text-sm text-gray-600">{modal.message}</p>
+            </div>
+            <div className="mt-6 flex justify-center">
+              <Button onClick={closeModal} className="px-6">OK</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Preview Modal (PDF/Images) */}
+      {previewUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60" onClick={closePreview}></div>
+          <div className="relative bg-white rounded-xl shadow-2xl border border-gray-200 w-full max-w-5xl h-[80vh] mx-4">
+            <div className="flex items-center justify-between p-3 border-b">
+              <div className="text-sm text-gray-700 truncate pr-2">{previewUrl}</div>
+              <Button className="px-3 py-1" onClick={closePreview}>Close</Button>
+            </div>
+            <div className="w-full h-[calc(80vh-48px)]">
+              <iframe title="Preview" src={previewUrl} className="w-full h-full" />
+            </div>
+          </div>
+        </div>
+      )}
+      <div className="mb-8 flex items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Recruiter Dashboard</h1>
+          <p className="text-gray-600">Manage job descriptions, questions, and interview settings</p>
+        </div>
+        <div>
+          <Button
+            className="px-6 py-2"
+            onClick={async () => {
+              if (!resumeId) { openModal('Please upload a resume first to get resume_id.'); return; }
+              try {
+                const data = await apiService.getRecruiterByResumeId(resumeId);
+                // Print the full JSON bundle
+                console.log('Recruiter Bundle JSON:', JSON.stringify(data, null, 2));
+                // Stash parsed texts in sessionStorage for Preparing/Active pages
+                try {
+                  if (data?.parsed?.resume_txt) sessionStorage.setItem('rb_resume_txt', data.parsed.resume_txt);
+                  if (data?.parsed?.jd_txt) sessionStorage.setItem('rb_jd_txt', data.parsed.jd_txt);
+                  if (data?.parsed?.questions) sessionStorage.setItem('rb_questions_dict', JSON.stringify(data.parsed.questions));
+                } catch {}
+                openModal('Fetched recruiter data JSON. Check console.', () => {
+                  try {
+                    navigate('/interview/idle?type=technical');
+                  } catch {
+                    window.location.href = 'http://localhost:5173/interview/idle?type=technical';
+                  }
+                });
+              } catch (e) {
+                console.error('Failed to fetch recruiter by resume_id', e);
+              }
+            }}
+          >
+            Get Link
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-6">
@@ -164,10 +274,82 @@ export default function RecruiterDashboard() {
                     {/* <div className="text-base font-medium mb-1">Upload Job-related Files</div>
                     <div className="text-sm text-gray-500 mb-4">Upload additional job requirements, team info, or company documents</div> */}
                     <div className="w-full max-w-md">
-                      <FileUpload accept=".pdf,.doc,.docx,.txt" multiple onFilesSelected={(files) => console.log('Job files uploaded:', files)} />
+                      <FileUpload
+                        accept=".pdf,.doc,.docx,.txt"
+                        multiple
+                        onFilesSelected={async (files) => {
+                          if (!resumeId) {
+                            openModal('Please upload a resume first to generate resume_id.');
+                            return;
+                          }
+                          const list = Array.from(files as unknown as FileList);
+                          const uploaded: Array<{ file_id: number; storage_path: string }> = [];
+                          for (const f of list) {
+                            try {
+                              const res = await apiService.createRecruiter({
+                                resumeId,
+                                jdTitle: '',
+                                jdDescription: '',
+                                jdFile: f,
+                                questionsJson: null,
+                                linkedinUrl: null,
+                              });
+                              if (res.jd_file_path) {
+                                uploaded.push({ file_id: res.jd_id, storage_path: res.jd_file_path });
+                              }
+                            } catch (e) {
+                              console.error('JD upload failed', e);
+                            }
+                          }
+                          if (uploaded.length) {
+                            setJdUploads(prev => [...uploaded, ...prev]);
+                            setPreviewUrl(uploaded[0].storage_path);
+                            openModal('JD uploaded');
+                          }
+                        }}
+                      />
                     </div>
                   </div>
                 </div>
+                {jdUploads.length > 0 && (
+                  <div className="mt-3">
+                    <div className="text-sm text-gray-700 mb-2">Uploaded JD Files</div>
+                    <ul className="space-y-2">
+                      {jdUploads.map(item => {
+                        const name = item.storage_path.split('/').pop() || item.storage_path;
+                        const lower = name.toLowerCase();
+                        const isInline = lower.endsWith('.pdf') || lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.gif') || lower.endsWith('.webp');
+                        return (
+                          <li key={item.file_id} className="text-sm">
+                            <div className="flex items-center gap-3">
+                              <a href={item.storage_path} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">
+                                {name}
+                              </a>
+                              {isInline ? (
+                                <button
+                                  className="px-2 py-1 border border-gray-300 rounded hover:bg-gray-50"
+                                  onClick={() => setPreviewUrl(item.storage_path)}
+                                >
+                                  Preview
+                                </button>
+                              ) : (
+                                <button
+                                  className="px-2 py-1 border border-gray-300 rounded hover:bg-gray-50"
+                                  onClick={() => {
+                                    const gdoc = `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(item.storage_path)}`;
+                                    window.open(gdoc, '_blank');
+                                  }}
+                                >
+                                  Open Viewer
+                                </button>
+                              )}
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
               </div>
               
               <div className="flex justify-end">
@@ -213,9 +395,34 @@ export default function RecruiterDashboard() {
                     />
                   </div>
                   <div className="flex justify-end">
-                    <Button onClick={handleSaveQuestion} data-testid="button-save-question" className="px-6 py-2">
-                      <Plus className="w-4 h-4 mr-2" /> Add Question
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button onClick={handleSaveQuestion} data-testid="button-save-question" className="px-6 py-2">
+                        <Plus className="w-4 h-4 mr-2" /> Add Question
+                      </Button>
+                      <Button
+                        onClick={async () => {
+                          if (!resumeId) {
+                            openModal('Please upload a resume first to generate resume_id.');
+                            return;
+                          }
+                          try {
+                            await apiService.createRecruiter({
+                              resumeId,
+                              jdTitle: '',
+                              jdDescription: '',
+                              questionsJson: customQuestions,
+                              linkedinUrl: null,
+                            });
+                            openModal('Questions appended ');
+                          } catch (e) {
+                            console.error('Failed to append questions to recruiter', e);
+                          }
+                        }}
+                        className="px-6 py-2"
+                      >
+                        Submit
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -224,10 +431,65 @@ export default function RecruiterDashboard() {
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 hover:border-gray-400 transition-colors">
                   <div className="flex flex-col items-center text-center text-gray-600">
                     <Upload className="w-12 h-12 mb-4 text-gray-500" />
-                    {/* <div className="text-lg font-medium mb-2">Upload Question Files</div>
-                    <div className="text-sm text-gray-500 mb-4">Upload documents containing interview questions</div> */}
-                    <FileUpload accept=".pdf,.doc,.docx,.txt,.csv" multiple onFilesSelected={(files) => console.log('Question files uploaded:', files)} />
+                    <FileUpload
+                      accept=".pdf,.doc,.docx,.txt,.csv"
+                      multiple
+                      onFilesSelected={async (files) => {
+                        if (!candidateId) { console.warn('No candidate_id found'); return; }
+                        const uploaded: Array<{ file_id: number; storage_path: string }> = [];
+                        for (const f of files) {
+                          try {
+                            const res = await apiService.uploadFile(candidateId, 'question', f);
+                            uploaded.push({ file_id: res.file_id, storage_path: res.storage_path });
+                          } catch (e) {
+                            console.error('Question file upload failed', e);
+                          }
+                        }
+                        if (uploaded.length) setQuestionUploads(prev => [...uploaded, ...prev]);
+                        openModal('Question file(s) uploaded successfully.');
+                      }}
+                    />
                   </div>
+                </div>
+              )}
+
+              {questionUploads.length > 0 && (
+                <div className="mt-3">
+                  <div className="text-sm text-gray-700 mb-2">Uploaded Question Files</div>
+                  <ul className="space-y-2">
+                    {questionUploads.map(item => {
+                      const name = item.storage_path.split('/').pop() || item.storage_path;
+                      const lower = name.toLowerCase();
+                      const isInline = lower.endsWith('.pdf') || lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.gif') || lower.endsWith('.webp');
+                      return (
+                        <li key={item.file_id} className="text-sm">
+                          <div className="flex items-center gap-3">
+                            <a href={item.storage_path} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">
+                              {name}
+                            </a>
+                            {isInline ? (
+                              <button
+                                className="px-2 py-1 border border-gray-300 rounded hover:bg-gray-50"
+                                onClick={() => setPreviewUrl(item.storage_path)}
+                              >
+                                Preview
+                              </button>
+                            ) : (
+                              <button
+                                className="px-2 py-1 border border-gray-300 rounded hover:bg-gray-50"
+                                onClick={() => {
+                                  const gdoc = `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(item.storage_path)}`;
+                                  window.open(gdoc, '_blank');
+                                }}
+                              >
+                                Open Viewer
+                              </button>
+                            )}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </div>
               )}
 
@@ -324,10 +586,64 @@ export default function RecruiterDashboard() {
                 <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 hover:border-gray-400 transition-colors">
                   <div className="flex flex-col items-center text-center text-gray-600">
                     <Upload className="w-12 h-12 mb-4 text-gray-500" />
-                    {/* <div className="text-lg font-medium mb-2">Upload Resume</div>
-                    <div className="text-sm text-gray-500 mb-4">Upload candidate's resume for evaluation and analysis</div> */}
-                    <FileUpload accept=".pdf,.doc,.docx,.txt" multiple onFilesSelected={(files) => console.log('Resume uploaded:', files)} />
+                    <FileUpload
+                      accept=".pdf,.doc,.docx,.txt"
+                      multiple
+                      onFilesSelected={async (files) => {
+                        // Only take first resume for linking; get resume_id from backend
+                        try {
+                          const first = files[0];
+                          if (!first) return;
+                          const res = await apiService.uploadResume(first);
+                          setResumeId(res.resume_id);
+                          setResumeUploads(prev => [{ file_id: res.resume_id, storage_path: res.resume_path }, ...prev]);
+                          openModal('Resume uploaded.');
+                        } catch (e) {
+                          console.error('Resume upload failed', e);
+                        }
+                      }}
+                    />
                   </div>
+                </div>
+              )}
+
+              {resumeUploads.length > 0 && (
+                <div className="mt-3">
+                  <div className="text-sm text-gray-700 mb-2">Uploaded Resume Files</div>
+                  <ul className="space-y-2">
+                    {resumeUploads.map(item => {
+                      const name = item.storage_path.split('/').pop() || item.storage_path;
+                      const lower = name.toLowerCase();
+                      const isInline = lower.endsWith('.pdf') || lower.endsWith('.png') || lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.gif') || lower.endsWith('.webp');
+                      return (
+                        <li key={item.file_id} className="text-sm">
+                          <div className="flex items-center gap-3">
+                            <a href={item.storage_path} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">
+                              {name}
+                            </a>
+                            {isInline ? (
+                              <button
+                                className="px-2 py-1 border border-gray-300 rounded hover:bg-gray-50"
+                                onClick={() => setPreviewUrl(item.storage_path)}
+                              >
+                                Preview
+                              </button>
+                            ) : (
+                              <button
+                                className="px-2 py-1 border border-gray-300 rounded hover:bg-gray-50"
+                                onClick={() => {
+                                  const gdoc = `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(item.storage_path)}`;
+                                  window.open(gdoc, '_blank');
+                                }}
+                              >
+                                Open Viewer
+                              </button>
+                            )}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </div>
               )}
 

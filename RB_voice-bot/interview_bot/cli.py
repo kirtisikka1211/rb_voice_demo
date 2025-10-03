@@ -4,6 +4,8 @@ import os
 import PyPDF2
 from docx import Document
 import pandas as pd
+from io import BytesIO
+import requests
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='AI Interview Bot - Enhanced Voice Bot')
@@ -20,6 +22,34 @@ def extract_file_content(file_path):
     """Extract content from various file formats"""
     if not file_path:
         return ""
+    
+    # Remote URL support
+    if isinstance(file_path, str) and (file_path.startswith('http://') or file_path.startswith('https://')):
+        try:
+            resp = requests.get(file_path, timeout=20)
+            resp.raise_for_status()
+            content_type = resp.headers.get('Content-Type', '').lower()
+            url_ext = os.path.splitext(file_path.split('?')[0])[1].lower()
+            data = resp.content
+            # Prefer content-type; fallback to URL extension
+            if 'application/pdf' in content_type or url_ext == '.pdf':
+                reader = PyPDF2.PdfReader(BytesIO(data))
+                text = ""
+                for page in reader.pages:
+                    page_text = page.extract_text() or ""
+                    text += page_text + "\n"
+                return text
+            if 'application/vnd.openxmlformats-officedocument' in content_type or url_ext in ['.docx']:
+                doc = Document(BytesIO(data))
+                return "\n".join([p.text for p in doc.paragraphs])
+            if 'text/plain' in content_type or url_ext in ['.txt', '']:
+                try:
+                    return resp.text
+                except Exception:
+                    return data.decode('utf-8', errors='ignore')
+            return data.decode('utf-8', errors='ignore')
+        except Exception as e:
+            raise Exception(f"Error fetching URL {file_path}: {str(e)}")
     
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"File not found: {file_path}")
