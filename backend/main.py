@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, Response
 from fastapi import WebSocket, WebSocketDisconnect
 from fastapi.websockets import WebSocketState
 from fastapi.middleware.cors import CORSMiddleware
@@ -29,6 +29,11 @@ try:
 except Exception:  # Fallback when running as a script
     from database import Base, engine, get_db
     from models import Candidate, Agent, Resume, Recruiter
+
+try:
+    from backend.bot_service import bot_service
+except Exception:
+    bot_service = None
 
 
 class LoginRequest(BaseModel):
@@ -252,7 +257,7 @@ async def upload_resume(
 
     file_bytes = await uploaded_file.read()
 
-    sb_url = "https://ceywatgfpiyfdhrqfbip.supabase.co"
+    sb_url = ""
     sb_service_key = ""
     sb_bucket = os.getenv("SUPABASE_BUCKET", "files")
     if not sb_url or not sb_service_key:
@@ -512,40 +517,160 @@ def get_recruiter_by_resume(resume_id: int, db: Session = Depends(get_db)):
     }
 
 
+# ------------------- Bot control (Interview evaluation integration) -------------------
+class BotStartPayload(BaseModel):
+    jd_txt: Optional[str] = None
+    resume_txt: Optional[str] = None
+
+
+class BotTranscriptPayload(BaseModel):
+    session_id: str
+    text: str
+
+
+class BotStopPayload(BaseModel):
+    session_id: str
+
+
+@app.post("/bot/start")
+def bot_start(payload: BotStartPayload):
+    if bot_service is None:
+        raise HTTPException(status_code=500, detail="Bot service unavailable")
+    session_id = bot_service.start(jd_txt=payload.jd_txt or "", resume_txt=payload.resume_txt or "")
+    return {"session_id": session_id}
+
+
+@app.post("/bot/transcript")
+def bot_transcript(payload: BotTranscriptPayload):
+    if bot_service is None:
+        raise HTTPException(status_code=500, detail="Bot service unavailable")
+    try:
+        bot_service.add_transcript(payload.session_id, payload.text or "")
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Invalid session_id")
+    return {"ok": True}
+
+
+@app.post("/bot/stop")
+def bot_stop(payload: BotStopPayload):
+    if bot_service is None:
+        raise HTTPException(status_code=500, detail="Bot service unavailable")
+    try:
+        evaluation = bot_service.stop_and_evaluate(payload.session_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Invalid session_id")
+    except RuntimeError as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    return {"evaluation": evaluation}
+
+
+@app.get("/bot/evaluation/{session_id}")
+def bot_get_evaluation(session_id: str):
+    if bot_service is None:
+        raise HTTPException(status_code=500, detail="Bot service unavailable")
+    evaluation = bot_service.get_evaluation(session_id)
+    if evaluation is None:
+        raise HTTPException(status_code=404, detail="Not found")
+    return {"evaluation": evaluation}
+
 # ------------------- WebRTC: Create ephemeral Realtime session token -------------------
-@app.get("/webrtc/session")
-def create_webrtc_session(voice: str | None = None):
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise HTTPException(status_code=500, detail="OPENAI_API_KEY not configured on server")
+class WebRTCSessionRequest(BaseModel):
+    voice: Optional[str] = None
+    jd_txt: Optional[str] = None
+    resume_txt: Optional[str] = None
+    questions_dict: Optional[dict] = None
+    candidate_id: Optional[int] = None
+    interview_duration: Optional[int] = 30
 
-    # Default model mirrors the Node demo fallback
-    model = os.getenv("OPENAI_REALTIME_MODEL", "gpt-realtime")
-    url = "https://api.openai.com/v1/realtime/sessions"
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-        "OpenAI-Beta": "realtime=v1",
-    }
-    body = {
-        "model": model,
-    }
-    if voice:
-        body["voice"] = voice
-    else:
-        body["voice"] = "ash"
+@app.options("/webrtc/session")
+def webrtc_session_options(response: Response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    return {"message": "OK"}
 
+@app.post("/webrtc/session")
+def create_webrtc_session(payload: WebRTCSessionRequest, response: Response):
+    # Explicitly set CORS headers
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    
     try:
-        r = requests.post(url, headers=headers, json=body, timeout=30)
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise HTTPException(status_code=500, detail="OPENAI_API_KEY not configured on server")
+
+        # Default model mirrors the Node demo fallback
+        model = os.getenv("OPENAI_REALTIME_MODEL", "gpt-realtime")
+        url = "https://api.openai.com/v1/realtime/sessions"
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+            "OpenAI-Beta": "realtime=v1",
+        }
+        body = {
+            "model": model,
+            "voice": payload.voice or "marin",
+        }
+
+        # Add interview instructions if context is provided
+        if payload.jd_txt and payload.resume_txt:
+            try:
+                # Import bot components
+                import sys
+                sys.path.append('/Users/kirtisikka/Downloads/voice/backend')
+                print(f"[DEBUG] Added path: /Users/kirtisikka/Downloads/voice/backend")
+                print(f"[DEBUG] Python path: {sys.path}")
+                
+                from bot import InterviewBot
+                print(f"[DEBUG] Successfully imported InterviewBot")
+                
+                # Create bot instance to generate instructions
+                bot = InterviewBot(api_key=api_key, voice="marin",language="en", interview_duration=payload.interview_duration or 6,)  # pyright: ignore[reportUndefinedVariable]
+                
+                # Set the context directly
+                bot.job_description = payload.jd_txt
+              
+                bot.candidate_resume = payload.resume_txt
+                bot.interview_mode = True
+                
+                # Load custom questions if provided
+                if payload.questions_dict:
+                    questions_list = list(payload.questions_dict.values())
+                    bot._categorize_custom_questions(questions_list)
+                
+                # Generate comprehensive interview instructions
+                instructions = bot.get_interview_instructions()
+                body["instructions"] = instructions
+            
+            except ImportError as e:
+                print(f"[ERROR] Import failed: {e}")
+                print(f"[ERROR] Import error type: {type(e).__name__}")
+                # Fallback to simple instructions if bot import fails
+               
+            except Exception as e:
+                print(f"[ERROR] Bot setup failed: {e}")
+                print(f"[ERROR] Error type: {type(e).__name__}")
+                import traceback
+                print(f"[ERROR] Traceback: {traceback.format_exc()}")
+                # Fallback to simple instructions if bot setup fails
+                
+        
+        try:
+            r = requests.post(url, headers=headers, json=body, timeout=30)
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"Failed to reach OpenAI: {e}")
+
+        if r.status_code >= 400:
+            # Pass through error text for easier debugging
+            raise HTTPException(status_code=r.status_code, detail=r.text)
+
+        try:
+            return r.json()
+        except Exception:
+            raise HTTPException(status_code=502, detail="Invalid JSON from OpenAI")
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Failed to reach OpenAI: {e}")
-
-    if r.status_code >= 400:
-        # Pass through error text for easier debugging
-        raise HTTPException(status_code=r.status_code, detail=r.text)
-
-    try:
-        return r.json()
-    except Exception:
-        raise HTTPException(status_code=502, detail="Invalid JSON from OpenAI")
+        print(f"Error in create_webrtc_session: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 

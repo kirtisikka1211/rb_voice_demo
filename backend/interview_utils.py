@@ -17,8 +17,10 @@ def extract_resume_content(resume_text: str) -> str:
     return "Ask about technical projects mentioned in resume"
 
 def extract_job_title(jd_text: str) -> str:
+    print("job title extracted", jd_text)
     match = re.search(r'(?:job title|position)\s*:?\s*([^\n]+)', jd_text, re.I)
-    return match.group(1).strip() if match else "Software Engineer"
+  
+    return match.group(1).strip() if match else "Ai engineer Intern"
 
 def extract_candidate_name(resume_text: str) -> str:
     lines = resume_text.split('\n')[:5]

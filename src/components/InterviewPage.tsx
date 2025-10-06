@@ -8,7 +8,7 @@ import {
   XCircle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import AudioRealtimeClient from '../services/audioWebSocket';
+
 import { apiService } from '../services/api';
 
 interface InterviewQuestion {

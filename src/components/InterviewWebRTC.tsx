@@ -25,7 +25,7 @@ interface Props {
 }
 
 // WebRTC-backed interview page reusing the InterviewPage UI
-const InterviewWebRTC: React.FC<Props> = ({ userEmail: _userEmail, onComplete, interviewType, voice = 'ash' }) => {
+const InterviewWebRTC: React.FC<Props> = ({ userEmail: _userEmail, onComplete, interviewType, voice = 'marin' }) => {
   const navigate = useNavigate();
 
   // UI state (mirror InterviewPage)
@@ -113,7 +113,36 @@ const InterviewWebRTC: React.FC<Props> = ({ userEmail: _userEmail, onComplete, i
     addSystemMessage('Connecting...');
 
     try {
-      const sessionRes = await fetch(`http://localhost:8000/webrtc/session?voice=${encodeURIComponent(voice)}`);
+      // Get interview context from sessionStorage
+      const resumeTxt = sessionStorage.getItem('rb_resume_txt') || '';
+      const jdTxt = sessionStorage.getItem('rb_jd_txt') || '';
+      const qDictRaw = sessionStorage.getItem('rb_questions_dict');
+      const qDict = qDictRaw ? JSON.parse(qDictRaw) : undefined;
+
+      // Prepare POST request body
+      const requestBody = {
+        voice: voice,
+        jd_txt: jdTxt,
+        resume_txt: resumeTxt,
+        questions_dict: qDict,
+        interview_duration: 30
+      };
+
+      console.log('[WebRTC Debug] Sending context:', {
+        voice: voice,
+        jd_txt_length: jdTxt.length,
+        resume_txt_length: resumeTxt.length,
+        questions_count: qDict ? Object.keys(qDict).length : 0
+      });
+
+      const sessionRes = await fetch('http://localhost:8000/webrtc/session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      });
+      
       if (!sessionRes.ok) {
         const text = await sessionRes.text();
         throw new Error(`Session failed: ${sessionRes.status} ${text}`);

@@ -43,7 +43,7 @@ class InterviewBot:
         self.language = language
         self.interview_duration = interview_duration
         self.websocket = None
-        print
+        print("I am here ")
         # Reuse AudioManager
         self.audio_manager = AudioManager(sample_rate=24000, chunk_size=512)
         self.input_stream = None
@@ -119,6 +119,7 @@ class InterviewBot:
             if jd_file:
                 with open(jd_file, 'r', encoding='utf-8') as f:
                     self.job_description = f.read()
+                    print("job description loaded")
             if resume_file:
                 with open(resume_file, 'r', encoding='utf-8') as f:
                     self.candidate_resume = f.read()
@@ -135,7 +136,7 @@ class InterviewBot:
                 # Check for cached questions first
                 content_hash = self._get_content_hash(self.job_description, self.candidate_resume)
                 cached_questions = self._load_cached_questions(content_hash)
-                
+                print("interview context loaded")
                 if cached_questions:
                     cache_file = os.path.join(self.questions_cache_dir, f"questions_{content_hash}.json")
                     print(f"💾 Using cached questions from: {cache_file}")
