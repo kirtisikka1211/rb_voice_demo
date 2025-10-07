@@ -23,17 +23,10 @@ try:
     from docx import Document as DocxDocument
 except Exception:
     DocxDocument = None
-try:
-    from backend.database import Base, engine, get_db
-    from backend.models import Candidate, Agent, CandidateInterviewFeedback, FileRecord, Resume, Recruiter, Evaluation
-except Exception:  # Fallback when running as a script
-    from database import Base, engine, get_db
-    from models import Candidate, Agent, Resume, Recruiter, Evaluation
+from backend.database import Base, engine, get_db
+from backend.models import Candidate, Agent, CandidateInterviewFeedback, FileRecord, Resume, Recruiter, Evaluation
 
-# try:
-#     from backend.bot_service import bot_service
-# except Exception:
-#     bot_service = None
+
 
 
 class LoginRequest(BaseModel):
@@ -66,11 +59,6 @@ class QuestionsRequest(BaseModel):
     candidate_id: int
     interview_type: str
     questions: dict | list
-
-class BotStartRequest(BaseModel):
-    resume_txt: str
-    jd_txt: str
-    questions_dict: Optional[dict[str, str]] = None
 
 
 class TranscriptCreate(BaseModel):
@@ -143,11 +131,6 @@ def extract_text_from_path(path_or_url: str) -> str:
 
 
 
-# @app.get("/health")
-# def health():
-#     return {"ok": True}
-
-
 @app.post("/auth/login", response_model=LoginResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
     candidate: Candidate | None = (
@@ -167,74 +150,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     )
 
 
-@app.get("/questions")
-def get_questions(candidate_id: int | None = None, interview_type: str | None = None, db: Session = Depends(get_db)):
-    query = db.query(Agent)
-    if interview_type is not None:
-        query = query.filter(Agent.interview_type == interview_type)
-    if candidate_id is not None:
-        query = query.filter(Agent.candidate_id == candidate_id)
-    rows = query.order_by(Agent.viewer_id.desc()).limit(100).all()
-    return [
-        {
-            "viewer_id": r.viewer_id,
-            "candidate_id": r.candidate_id,
-            "interview_type": r.interview_type,
-            "questions": r.questions,
-        }
-        for r in rows
-    ]
 
-
-class QuestionCreate(BaseModel):
-    candidate_id: int
-    interview_type: str
-    questions: List[Any]  # Can be List[str] if only strings are stored
-
-
-# --- POST endpoint ---
-@app.post("/questions")
-def create_question(question: QuestionCreate, db: Session = Depends(get_db)):
-    new_question = Agent(
-        candidate_id=question.candidate_id,
-        interview_type=question.interview_type,
-        questions=question.questions,
-    )
-    db.add(new_question)
-    db.commit()
-    db.refresh(new_question)
-
-    return {
-        "viewer_id": new_question.viewer_id,
-        "candidate_id": new_question.candidate_id,
-        "interview_type": new_question.interview_type,
-        "questions": new_question.questions,
-    }
-
-@app.post("/feedback")
-def submit_feedback(payload: FeedbackRequest, db: Session = Depends(get_db)):
-    # Check if response_id exists
-    response_exists = db.execute(
-        f"SELECT 1 FROM interview_responses WHERE response_id = {payload.response_id}"
-    ).first()
-    if not response_exists:
-        raise HTTPException(status_code=400, detail="Invalid response_id")
-
-    feedback = CandidateInterviewFeedback(
-        response_id=payload.response_id,
-        feedback=payload.feedback,
-        satisfaction=payload.satisfaction,
-    )
-    db.add(feedback)
-    db.commit()
-    db.refresh(feedback)
-
-    return {
-        "feedback_id": feedback.feedback_id,
-        "response_id": feedback.response_id,
-        "feedback": feedback.feedback,
-        "satisfaction": feedback.satisfaction,
-    }
 
 
 # ------------------- Auth: Sign up -------------------
@@ -381,17 +297,7 @@ def get_evaluation_by_resume(resume_id: int, db: Session = Depends(get_db)):
                     resume_txt = ""
 
         # Call evaluation function with transcript, JD, resume
-        try:
-            from backend.evaluation import call_comprehensive_evaluation
-        except Exception:
-            # Fallback: add backend directory to sys.path and import locally
-            try:
-                import sys as _sys
-                import os as _os
-                _sys.path.append(_os.path.dirname(__file__))
-            except Exception:
-                pass
-            from evaluation import call_comprehensive_evaluation
+        from backend.evaluation import call_comprehensive_evaluation
 
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
@@ -417,7 +323,7 @@ def get_evaluation_by_resume(resume_id: int, db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to run evaluation: {e}")
 
-# #
+
 # ------------------- Resume upload -------------------
 @app.post("/resume/upload")
 async def upload_resume(
@@ -431,30 +337,30 @@ async def upload_resume(
 
     file_bytes = await uploaded_file.read()
 
-    sb_url = "https://ceywatgfpiyfdhrqfbip.supabase.co"
-    sb_service_key = ""
+    sb_url = os.getenv("SUPABASE_URL")
+    sb_service_key = os.getenv("SUPABASE_SERVICE_KEY")
     sb_bucket = os.getenv("SUPABASE_BUCKET", "files")
-    if not sb_url or not sb_service_key:
-        raise HTTPException(status_code=500, detail="Supabase configuration missing. Set SUPABASE_URL and SUPABASE_SERVICE_KEY.")
 
-    try:
-        import requests
-        object_path = f"resumes/{storage_filename}"
-        upload_endpoint = f"{sb_url}/storage/v1/object/{sb_bucket}/{object_path}"
-        headers = {
-            "Authorization": f"Bearer {sb_service_key}",
-            "apikey": sb_service_key,
-            "Content-Type": uploaded_file.content_type or "application/octet-stream",
-            "x-upsert": "true",
-        }
-        resp = requests.post(upload_endpoint, data=file_bytes, headers=headers, timeout=30)
-        if resp.status_code not in (200, 201):
-            raise HTTPException(status_code=500, detail=f"Supabase upload failed: {resp.status_code} {resp.text}")
-        public_url = f"{sb_url}/storage/v1/object/public/{sb_bucket}/{object_path}"
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Supabase upload error: {e}")
+    if sb_url and sb_service_key:
+        try:
+            import requests
+            object_path = f"resumes/{storage_filename}"
+            upload_endpoint = f"{sb_url}/storage/v1/object/{sb_bucket}/{object_path}"
+            headers = {
+                "Authorization": f"Bearer {sb_service_key}",
+                "apikey": sb_service_key,
+                "Content-Type": uploaded_file.content_type or "application/octet-stream",
+                "x-upsert": "true",
+            }
+            resp = requests.post(upload_endpoint, data=file_bytes, headers=headers, timeout=30)
+            if resp.status_code not in (200, 201):
+                raise HTTPException(status_code=500, detail=f"Supabase upload failed: {resp.status_code} {resp.text}")
+            public_url = f"{sb_url}/storage/v1/object/public/{sb_bucket}/{object_path}"
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Supabase upload error: {e}")
+    
 
     rec = Resume(resume_path=public_url, uploaded_at=datetime.utcnow())
     db.add(rec)
@@ -486,29 +392,40 @@ async def create_recruiter(
         storage_filename = f"jd_{timestamp}_{safe_name}"
         file_bytes = await jd_file.read()
 
-        sb_url = "https://ceywatgfpiyfdhrqfbip.supabase.co"
-        sb_service_key = ""
+        sb_url = os.getenv("SUPABASE_URL")
+        sb_service_key = os.getenv("SUPABASE_SERVICE_KEY")
         sb_bucket = os.getenv("SUPABASE_BUCKET", "files")
-        if not sb_url or not sb_service_key:
-            raise HTTPException(status_code=500, detail="Supabase configuration missing. Set SUPABASE_URL and SUPABASE_SERVICE_KEY.")
-        try:
-            import requests
-            object_path = f"jd/{storage_filename}"
-            upload_endpoint = f"{sb_url}/storage/v1/object/{sb_bucket}/{object_path}"
-            headers = {
-                "Authorization": f"Bearer {sb_service_key}",
-                "apikey": sb_service_key,
-                "Content-Type": jd_file.content_type or "application/octet-stream",
-                "x-upsert": "true",
-            }
-            resp = requests.post(upload_endpoint, data=file_bytes, headers=headers, timeout=30)
-            if resp.status_code not in (200, 201):
-                raise HTTPException(status_code=500, detail=f"Supabase upload failed: {resp.status_code} {resp.text}")
-            jd_file_path = f"{sb_url}/storage/v1/object/public/{sb_bucket}/{object_path}"
-        except HTTPException:
-            raise
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Supabase upload error: {e}")
+        if sb_url and sb_service_key:
+            try:
+                import requests
+                object_path = f"jd/{storage_filename}"
+                upload_endpoint = f"{sb_url}/storage/v1/object/{sb_bucket}/{object_path}"
+                headers = {
+                    "Authorization": f"Bearer {sb_service_key}",
+                    "apikey": sb_service_key,
+                    "Content-Type": jd_file.content_type or "application/octet-stream",
+                    "x-upsert": "true",
+                }
+                resp = requests.post(upload_endpoint, data=file_bytes, headers=headers, timeout=30)
+                if resp.status_code not in (200, 201):
+                    raise HTTPException(status_code=500, detail=f"Supabase upload failed: {resp.status_code} {resp.text}")
+                jd_file_path = f"{sb_url}/storage/v1/object/public/{sb_bucket}/{object_path}"
+            except HTTPException:
+                raise
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Supabase upload error: {e}")
+        else:
+            # Local filesystem fallback under project Data/uploads/jd
+            project_root = os.path.dirname(os.path.dirname(__file__))
+            local_dir = os.path.join(project_root, "Data", "uploads", "jd")
+            try:
+                os.makedirs(local_dir, exist_ok=True)
+                local_path = os.path.join(local_dir, storage_filename)
+                with open(local_path, "wb") as f:
+                    f.write(file_bytes)
+                jd_file_path = local_path
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Local save error: {e}")
 
     # Parse questions from JSON if provided
     parsed_questions = None
@@ -821,46 +738,19 @@ def create_webrtc_session(payload: WebRTCSessionRequest, response: Response):
         # Add interview instructions if context is provided
         if payload.jd_txt and payload.resume_txt:
             try:
-                # Import bot components
-                import sys
-                sys.path.append('/Users/kirtisikka/Downloads/voice/backend')
-                print(f"[DEBUG] Added path: /Users/kirtisikka/Downloads/voice/backend")
-                print(f"[DEBUG] Python path: {sys.path}")
-                
-                from bot import InterviewBot
-                print(f"[DEBUG] Successfully imported InterviewBot")
-                
-                # Create bot instance to generate instructions
-                bot = InterviewBot(api_key=api_key, voice="marin",language="en", interview_duration=6)  # pyright: ignore[reportUndefinedVariable]
-                
-                # Set the context directly
+                from backend.bot import InterviewBot
+                bot = InterviewBot(api_key=api_key, voice="marin", language="en", interview_duration=6)  # pyright: ignore[reportUndefinedVariable]
                 bot.job_description = payload.jd_txt
-              
                 bot.candidate_resume = payload.resume_txt
                 bot.interview_mode = True
-                
-                # Load custom questions if provided
                 if payload.questions_dict:
                     questions_list = list(payload.questions_dict.values())
                     bot._categorize_custom_questions(questions_list)
-                
-                # Generate comprehensive int̉erview instructions
                 instructions = bot.get_interview_instructions()
                 body["instructions"] = instructions
-            
-            except ImportError as e:
-                print(f"[ERROR] Import failed: {e}")
-                print(f"[ERROR] Import error type: {type(e).__name__}")
-                # Fallback to simple instructions if bot import fails
-               
             except Exception as e:
+                # leave body without instructions if bot import/setup fails
                 print(f"[ERROR] Bot setup failed: {e}")
-                print(f"[ERROR] Error type: {type(e).__name__}")
-                import traceback
-                print(f"[ERROR] Traceback: {traceback.format_exc()}")
-                # Fallback to simple instructions if bot setup fails
-                
-        
         try:
             r = requests.post(url, headers=headers, json=body, timeout=30)
         except Exception as e:
@@ -877,4 +767,3 @@ def create_webrtc_session(payload: WebRTCSessionRequest, response: Response):
     except Exception as e:
         print(f"Error in create_webrtc_session: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
