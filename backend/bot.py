@@ -645,17 +645,8 @@ INTERVIEW METADATA:
     def _save_evaluation_json(self):
         if not getattr(self, "evaluation_data", None):
             return
-        report = {
-            "interview_metadata": {
-                "date": self.session_manager.session_start_time.strftime('%Y-%m-%d %H:%M:%S'),
-                "duration_planned": f"{self.interview_duration} minutes",
-                "voice_used": self.voice,
-                "total_exchanges": len(self.session_manager.conversation),
-                "final_phase": self.phase_manager.interview_phase
-            },
-            **self.evaluation_data
-        }
-        save_json(report, "interview_evaluation")
+        # Directly save the evaluation data 
+        save_json(self.evaluation_data, "interview_evaluation")
 
 
 

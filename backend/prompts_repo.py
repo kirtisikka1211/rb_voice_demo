@@ -272,32 +272,24 @@ All feedback must reference concrete transcript elements (e.g., paraphrased or b
 If sub-dimensions diverge, weigh by role relevance implied in JD. Favor demonstrated applied reasoning over rote definition recall. Penalize critical inaccuracies more than omissions. When uncertain between two bands, choose the lower unless strong evidence supports the higher.
 
 ================ OUTPUT CONTRACT (CRITICAL) ================
-Return ONLY this exact JSON object (no markdown fences, no extra keys, no trailing commentary). Each section now includes BOTH a 1–10 integer score and a derived percentage (score * 10) as an integer 0–100:
+Return ONLY this exact JSON object (no markdown fences, no extra keys, no trailing commentary). Represent each score as an integer followed by "/10" (e.g., "7/10"):
 {
    "overall_assessment": {
-      "score": <1-10>,
-      "score_percent": <0-100>,
+      "score": "<1-10>/10",
       "feedback_summary": "<Overall performance summary (4-5 sentences) citing specific strengths, weaknesses, role alignment, risk factors if any>"
    },
    "technical_competency": {
-      "score": <1-10>,
-      "score_percent": <0-100>,
+      "score": "<1-10>/10",
       "feedback": "<Technical evaluation: concrete strengths, gaps, alignment to JD, specific transcript evidence. Mention red flags ONLY if evidenced.>"
    },
    "communication_assessment": {
-      "score": <1-10>,
-      "score_percent": <0-100>,
-      "sentiment": {
-         "overall_sentiment": "<positive|neutral|negative>",
-         "confidence_level": "<high|medium|low>"
-      },
+      "score": "<1-10>/10",
       "feedback": "<Communication analysis: structure, clarity, pacing, filler density classification (low/moderate/high), hesitation patterns, confidence indicators, any professionalism notes.>"
    }
 }
 
 STRICT VALIDATION BEFORE OUTPUT:
-- All three 'score' values are integers 1–10.
-- Each 'score_percent' = score * 10 (integer) and within 0–100.
+- All three 'score' values must be strings in the form '<int>/10' where int is 1–10.
 - Keys & nesting EXACTLY match schema.
 - No additional keys, no markdown, no code fences.
 - Do NOT include this instruction text.

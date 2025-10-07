@@ -46,24 +46,23 @@ def call_comprehensive_evaluation(api_key: str, conversation_text: str, job_desc
         
         data = json.loads(txt)
 
-        # Backward compatibility: if new percentage keys absent, compute them.
-        try:
-            def _ensure_percent(section_key: str, score_field: str = 'score', percent_field: str = 'score_percent'):
-                if section_key in data and isinstance(data[section_key], dict):
-                    sec = data[section_key]
-                    if score_field in sec and percent_field not in sec:
-                        score_val = sec.get(score_field)
-                        if isinstance(score_val, (int, float)):
-                            # Clamp and convert to int 0-100 (score * 10 heuristic)
-                            pct = int(round(max(0, min(10, score_val)) * 10))
-                            sec[percent_field] = pct
-            _ensure_percent('overall_assessment')
-            _ensure_percent('technical_competency')
-            _ensure_percent('communication_assessment')
-        except Exception as _pct_err:
-            logger.warning(f"Failed to backfill score_percent fields: {_pct_err}")
+        # Normalize scores: accept either int or already formatted 'X/10'
+        def _normalize_score(section_key: str):
+            if section_key in data and isinstance(data[section_key], dict):
+                sec = data[section_key]
+                sc = sec.get('score')
+                if isinstance(sc, (int, float)):
+                    try:
+                        iv = int(sc)
+                        iv = max(1, min(10, iv))
+                        sec['score'] = f"{iv}/10"
+                    except Exception:
+                        pass
+        _normalize_score('overall_assessment')
+        _normalize_score('technical_competency')
+        _normalize_score('communication_assessment')
         
-        # Add metadata
+        # Add metadata (kept for internal reference)
         data['evaluation_metadata'] = {
             'timestamp': datetime.now().isoformat(),
             'evaluation_type': 'transcript_only',
