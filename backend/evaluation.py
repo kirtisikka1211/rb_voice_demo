@@ -45,15 +45,31 @@ def call_comprehensive_evaluation(api_key: str, conversation_text: str, job_desc
             txt = txt.split('```')[1].split('```')[0].strip()
         
         data = json.loads(txt)
+
+        # Normalize scores: accept either int or already formatted 'X/10'
+        def _normalize_score(section_key: str):
+            if section_key in data and isinstance(data[section_key], dict):
+                sec = data[section_key]
+                sc = sec.get('score')
+                if isinstance(sc, (int, float)):
+                    try:
+                        iv = int(sc)
+                        iv = max(1, min(10, iv))
+                        sec['score'] = f"{iv}/10"
+                    except Exception:
+                        pass
+        _normalize_score('overall_assessment')
+        _normalize_score('technical_competency')
+        _normalize_score('communication_assessment')
         
-        # Add metadata
-        data['evaluation_metadata'] = {
-            'timestamp': datetime.now().isoformat(),
-            'evaluation_type': 'transcript_only',
-            'duration_seconds': (datetime.now() - interview_start_time).total_seconds() if interview_start_time else None
-        }
+        # # Add metadata (kept for internal reference)
+        # data['evaluation_metadata'] = {
+        #     'timestamp': datetime.now().isoformat(),
+        #     'evaluation_type': 'transcript_only',
+        #     'duration_seconds': (datetime.now() - interview_start_time).total_seconds() if interview_start_time else None
+        # }
         
-        return data
+        # return data
         
     except Exception as e:
         logger.error(f"Comprehensive evaluation failed: {e}")

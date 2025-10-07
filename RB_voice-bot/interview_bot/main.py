@@ -149,11 +149,10 @@ async def main():
                     technical = bot.evaluation_data['technical_competency']
                     communication = bot.evaluation_data['communication_assessment']
                     
-                    print(f"   🎯 Overall Score: {overall['score']}/10")
-                    print(f"   🔧 Technical Score: {technical['score']}/10")
-                    print(f"   💬 Communication Score: {communication['score']}/10")
-                    print(f"   🎭 Sentiment: {communication['sentiment']['overall_sentiment'].title()}")
-                    print(f"   💪 Confidence: {communication['sentiment']['confidence_level'].title()}")
+                    # Scores already formatted like '7/10'
+                    print(f"   🎯 Overall Score: {overall['score']}")
+                    print(f"   � Technical Score: {technical['score']}")
+                    print(f"   💬 Communication Score: {communication['score']}")
                     
                     # Show if audio was analyzed
                     if bot.evaluation_data.get('evaluation_metadata', {}).get('audio_analyzed'):

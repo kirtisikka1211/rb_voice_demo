@@ -203,51 +203,96 @@ REMEMBER: Maintain professionalism while ensuring interview integrity. This is a
 
 # === Evaluation prompt for interview
 EVALUATION_PROMPT = r"""
-You are an expert technical interviewer and communication evaluator. 
-Analyze the candidate's interview performance using the transcript below.
+You are an expert technical interviewer and communication evaluator.
+Your task: produce a STRICT, EVIDENCE‑DRIVEN evaluation of the candidate's performance based ONLY on the provided transcript and context. Do NOT invent facts. OUTPUT MUST BE EXACTLY the JSON schema below (no extra keys, no markdown, no explanations, no code fences).
 
-INTERVIEW TRANSCRIPT:
+INTERVIEW TRANSCRIPT (verbatim source material to analyze):
 {conversation_text}
 
-JOB DESCRIPTION:
+JOB DESCRIPTION (role expectations reference):
 {job_description}
 
-CANDIDATE RESUME:
+CANDIDATE RESUME (claimed skills & experience reference):
 {resume}
 
-EVALUATION INSTRUCTIONS:
-Analyze the detailed transcript including all emotional markers, filler words, hesitations, and speech patterns.
+================ CORE SCORING DIMENSIONS ================
+1. Overall Assessment (1–10)
+    Holistic view integrating technical competency + communication + professionalism + alignment to role impact potential.
+2. Technical Competency (1–10)
+    Depth, correctness, architectural reasoning, applied problem solving, relevance to JD & claimed resume expertise.
+3. Communication Assessment (1–10)
+    Clarity, structure, pacing, confidence, listening responsiveness, reduction of noise (fillers/hesitations), professional tone.
 
-1. **Overall Assessment (1-10)**: Judge complete performance across technical, behavioral, and communication domains
-2. **Technical Competency (1-10)**: Evaluate technical accuracy, depth, problem-solving, and job alignment  
-3. **Communication Assessment (1-10)**: Analyze fluency, clarity, confidence based on:
-   - Filler word frequency (um, uh, like, you know)
-   - Hesitation patterns (..., pauses)
-   - Emotional markers (nervous laughter, sighs)
-   - Speech confidence (uncertain tone, voice shaking)
-   - Repetitions and false starts
-   - Overall communication flow and clarity
+================ SCORING RUBRIC (APPLIES TO ALL 3) ================
+Use ONLY integers 1–10. Calibrate with these global bands:
+1-2: Severely deficient / frequent inaccuracies / cannot articulate basics
+3-4: Below expectations / shallow, inconsistent, or unclear
+5-6: Adequate / meets minimum; some gaps or uneven depth
+7-8: Strong / above average; mostly precise, good depth & clarity
+9: Excellent / rare; nuanced mastery, cohesive, compelling
+10: Outstanding / exceptional, rare top-tier performance with consistent excellence and no material weaknesses
+Never assign 9–10 unless clear, repeated, transcript evidence exists.
 
-Return ONLY this JSON:
+================ TECHNICAL SUB-DIMENSIONS (INTERNAL CHECKLIST) ================
+Assess and synthesize (do NOT output separately):
+- Conceptual Accuracy: Are definitions / explanations correct & internally consistent?
+- Depth & Nuance: Goes beyond surface buzzwords? Mentions trade-offs / constraints.
+- Problem Solving / Reasoning: Logical step-by-step thinking vs hand‑waving.
+- Architecture / Systems Thinking: Components, interactions, scalability, reliability, performance, security considerations where relevant.
+- Practical Application: Real examples tied to resume projects or realistic scenarios.
+- Evidence of Ownership: Uses first-person, specific verbs, measurable outcomes.
+- Alignment to JD: Skills emphasized in JD actually demonstrated.
+- Integrity Signals: Flags: bluffing (vague repetition), contradiction, abrupt topic shifting when probed.
 
-{{
-  "overall_assessment": {{
-    "score": <1-10>,
-    "feedback_summary": "<Overall performance summary with specific examples and domain strengths/weaknesses in 4-5 sentences>"
-  }},
-  "technical_competency": {{
-    "score": <1-10>,
-    "feedback": "<Technical evaluation with specific skills, job alignment, and transcript examples>"
-  }},
-  "communication_assessment": {{
-    "score": <1-10>,
-    "sentiment": {{
-      "overall_sentiment": "<positive|neutral|negative>",
-      "confidence_level": "<high|medium|low>"
-    }},
-    "feedback": "<Communication analysis including audio patterns if available: pace, hesitation, filler words, tone, confidence>"
-  }}
-}}
+================ COMMUNICATION MICRO-METRICS (ANALYZE & SYNTHESIZE) ================
+Consider but DO NOT output as extra fields:
+- Structure: Logical beginning → middle → conclusion in answers.
+- Clarity: Directness, avoidance of rambling, precision in terminology.
+- Pacing: Neither rushed nor lethargic; breathing / natural pauses.
+- Filler Density (approx classification):
+   * Low: rare/occasional; * Moderate: periodic but not disruptive; * High: frequent, distracting.
+- Hesitations / False Starts: Count patterns ("...", repeated restarts). High frequency -> reduced confidence score.
+- Tone & Confidence: Consistent assured phrasing vs uncertain qualifiers ("maybe", "sort of", "I guess").
+- Active Listening / Responsiveness: Actually addresses question vs generic recitation.
+- Conciseness: Appropriately scoped answers (not meandering far from question).
+- Emotional Regulation: Professional tone; absence of inappropriate shifts.
+
+================ INTEGRITY & RED FLAG CHECKS (REFER IN FEEDBACK IF PRESENT) ================
+Potential indicators (mention only if evidenced):
+- Bluffing / Vague Repetition: Re-using question words without adding substance.
+- Contradictions: Later statements conflict with earlier claims.
+- Overclaiming: States expertise yet fails on basic follow-ups.
+- Evasion: Consistently sidesteps direct technical core.
+If NONE observed, do not fabricate—omit mention.
+
+================ EVIDENCE USAGE ================
+All feedback must reference concrete transcript elements (e.g., paraphrased or brief quoted phrases) to justify judgments. Keep examples concise. Do NOT exceed 4-5 sentences in overall summary. Avoid raw line numbers (not provided). No speculative inferences about unstated experience.
+
+================ SCORING DECISION GUIDELINES ================
+If sub-dimensions diverge, weigh by role relevance implied in JD. Favor demonstrated applied reasoning over rote definition recall. Penalize critical inaccuracies more than omissions. When uncertain between two bands, choose the lower unless strong evidence supports the higher.
+
+================ OUTPUT CONTRACT (CRITICAL) ================
+Return ONLY this exact JSON object (no markdown fences, no extra keys, no trailing commentary). Represent each score as an integer followed by "/10" (e.g., "7/10"):
+{
+   "overall_assessment": {
+      "score": "<1-10>/10",
+      "feedback_summary": "<Overall performance summary (4-5 sentences) citing specific strengths, weaknesses, role alignment, risk factors if any>"
+   },
+   "technical_competency": {
+      "score": "<1-10>/10",
+      "feedback": "<Technical evaluation: concrete strengths, gaps, alignment to JD, specific transcript evidence. Mention red flags ONLY if evidenced.>"
+   },
+   "communication_assessment": {
+      "score": "<1-10>/10",
+      "feedback": "<Communication analysis: structure, clarity, pacing, filler density classification (low/moderate/high), hesitation patterns, confidence indicators, any professionalism notes.>"
+   }
+}
+
+STRICT VALIDATION BEFORE OUTPUT:
+- All three 'score' values must be strings in the form '<int>/10' where int is 1–10.
+- Keys & nesting EXACTLY match schema.
+- No additional keys, no markdown, no code fences.
+- Do NOT include this instruction text.
 """
 
 
