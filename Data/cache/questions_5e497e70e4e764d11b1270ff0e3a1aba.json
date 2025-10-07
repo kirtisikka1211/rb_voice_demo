@@ -1,0 +1,69 @@
+{
+  "job_title": "Computer Vision Engineer – Fresher",
+  "technical_questions": [
+    {
+      "category": "Python Programming",
+      "question": "Explain the concept of list comprehensions in Python and how they can be used to improve code efficiency.",
+      "difficulty": "medium",
+      "follow_up": "Can you describe a scenario where using a list comprehension would be more beneficial than a traditional loop?"
+    },
+    {
+      "category": "Computer Vision Concepts",
+      "question": "What are the key differences between image preprocessing and feature extraction in computer vision?",
+      "difficulty": "medium",
+      "follow_up": "How does feature extraction impact the performance of a computer vision model?"
+    },
+    {
+      "category": "Deep Learning Frameworks",
+      "question": "How would you explain the difference between TensorFlow and PyTorch to someone new to deep learning?",
+      "difficulty": "medium",
+      "follow_up": "What factors would influence your decision to choose one framework over the other for a project?"
+    },
+    {
+      "category": "OpenCV",
+      "question": "Describe how OpenCV can be used for image thresholding and its importance in image processing tasks.",
+      "difficulty": "medium",
+      "follow_up": "Can you provide an example of a situation where image thresholding would be particularly useful?"
+    },
+    {
+      "category": "Problem-Solving Skills",
+      "question": "How would you approach debugging a deep learning model that is not performing as expected?",
+      "difficulty": "hard",
+      "follow_up": "What tools or techniques would you use to identify and resolve the issue?"
+    }
+  ],
+  "project_questions": [
+    {
+      "project": "Tap-in – Conference Event Management Platform",
+      "question": "Describe the architecture you used for the Tap-in platform and why it was suitable for the project.",
+      "follow_up": "What were the main challenges you faced during the development and how did you address them?"
+    },
+    {
+      "project": "Invoice Processing Automation",
+      "question": "What were the key considerations when choosing OCR technologies for the Invoice Processing Automation project?",
+      "follow_up": "How did you ensure the accuracy and reliability of the OCR models you implemented?"
+    },
+    {
+      "project": "Medical Inventory Automation",
+      "question": "Explain the role of PaddleOCR and LayoutParser in the Medical Inventory Automation project.",
+      "follow_up": "What strategies did you use to achieve high field extraction accuracy?"
+    }
+  ],
+  "behavioral_questions": [
+    {
+      "category": "Teamwork",
+      "question": "Describe a time when you had to collaborate with a team to solve a complex problem. What was your role and how did you contribute to the solution?",
+      "context": "Ask when discussing past project experiences."
+    },
+    {
+      "category": "Problem-Solving",
+      "question": "Can you provide an example of a particularly challenging technical problem you faced and how you approached solving it?",
+      "context": "Ask when evaluating problem-solving skills."
+    },
+    {
+      "category": "Adaptability",
+      "question": "Tell me about a situation where you had to quickly learn a new technology or tool to complete a project. How did you manage the learning process?",
+      "context": "Ask when discussing adaptability and eagerness to learn."
+    }
+  ]
+}

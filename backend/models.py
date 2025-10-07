@@ -111,3 +111,20 @@ class Recruiter(Base):
     questions = Column(JSON)
     linkedin_url = Column(Text)
     created_at = Column(DateTime)
+    # Stores parsed context blob returned by /recruiter/{resume_id}
+    # shape: { resume_path, jd_path, questions, jd_dict, resume_txt, jd_txt }
+    parsed = Column(JSON)
+
+
+# ------------------- Evaluation -------------------
+class Evaluation(Base):
+    __tablename__ = "evaluation"
+
+    evaluation_id = Column(Integer, primary_key=True, index=True)
+    # Optional references for traceability
+    resume_id = Column(Integer, ForeignKey("resume.resume_id", ondelete="SET NULL"))
+    jd_id = Column(Integer, ForeignKey("recruiter.jd_id", ondelete="SET NULL"))
+    # Core payloads
+    parsed = Column(JSON)  # parsed blob (resume_path, jd_path, jd_dict, questions, resume_txt, jd_txt)
+    transcript = Column(Text)  # optional transcript text/json string
+    created_at = Column(DateTime)

@@ -25,15 +25,15 @@ except Exception:
     DocxDocument = None
 try:
     from backend.database import Base, engine, get_db
-    from backend.models import Candidate, Agent, CandidateInterviewFeedback, FileRecord, Resume, Recruiter
+    from backend.models import Candidate, Agent, CandidateInterviewFeedback, FileRecord, Resume, Recruiter, Evaluation
 except Exception:  # Fallback when running as a script
     from database import Base, engine, get_db
-    from models import Candidate, Agent, Resume, Recruiter
+    from models import Candidate, Agent, Resume, Recruiter, Evaluation
 
-try:
-    from backend.bot_service import bot_service
-except Exception:
-    bot_service = None
+# try:
+#     from backend.bot_service import bot_service
+# except Exception:
+#     bot_service = None
 
 
 class LoginRequest(BaseModel):
@@ -71,6 +71,12 @@ class BotStartRequest(BaseModel):
     resume_txt: str
     jd_txt: str
     questions_dict: Optional[dict[str, str]] = None
+
+
+class TranscriptCreate(BaseModel):
+    transcript: str
+    jd_id: Optional[int] = None
+    resume_id: Optional[int] = None
 
 app = FastAPI(title="RBvoice ", version="0.1.0")
 
@@ -243,6 +249,174 @@ def signup(payload: SignUpRequest, db: Session = Depends(get_db)):
     db.refresh(candidate)
     return LoginResponse(candidate_id=candidate.candidate_id, email=candidate.email, name=candidate.name)
 
+
+# ------------------- Transcript ingest -------------------
+@app.post("/evaluation/transcript")
+def create_evaluation_transcript(payload: TranscriptCreate, db: Session = Depends(get_db)):
+    if not payload.transcript or not payload.transcript.strip():
+        raise HTTPException(status_code=400, detail="transcript is required")
+    if payload.jd_id is None and payload.resume_id is None:
+        raise HTTPException(status_code=400, detail="Provide jd_id or resume_id")
+
+    # Upsert: update existing by jd_id (preferred) or resume_id; else insert new
+    try:
+        existing: Evaluation | None = None
+        if payload.jd_id is not None:
+            existing = (
+                db.query(Evaluation)
+                .filter(Evaluation.jd_id == payload.jd_id)
+                .order_by(Evaluation.evaluation_id.desc())
+                .first()
+            )
+        if existing is None and payload.resume_id is not None:
+            existing = (
+                db.query(Evaluation)
+                .filter(Evaluation.resume_id == payload.resume_id)
+                .order_by(Evaluation.evaluation_id.desc())
+                .first()
+            )
+
+        if existing is not None:
+            existing.transcript = payload.transcript.strip()
+            # Optionally keep latest association fields consistent
+            if payload.jd_id is not None:
+                existing.jd_id = payload.jd_id
+            if payload.resume_id is not None:
+                existing.resume_id = payload.resume_id
+            db.add(existing)
+            db.commit()
+            db.refresh(existing)
+            return {
+                "evaluation_id": existing.evaluation_id,
+                "jd_id": existing.jd_id,
+                "resume_id": existing.resume_id,
+                "updated": True,
+            }
+
+        row = Evaluation(
+            jd_id=payload.jd_id,
+            resume_id=payload.resume_id,
+            transcript=payload.transcript.strip(),
+            parsed=None,
+            created_at=datetime.utcnow(),
+        )
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+        return {
+            "evaluation_id": row.evaluation_id,
+            "jd_id": row.jd_id,
+            "resume_id": row.resume_id,
+            "updated": False,
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to save transcript: {e}")
+
+
+# ------------------- Evaluation fetch by resume_id -------------------
+@app.get("/evaluation/{resume_id}")
+def get_evaluation_by_resume(resume_id: int, db: Session = Depends(get_db)):
+    try:
+        # Fetch latest evaluation row for transcript
+        row: Evaluation | None = (
+            db.query(Evaluation)
+            .filter(Evaluation.resume_id == resume_id)
+            .order_by(Evaluation.evaluation_id.desc())
+            .first()
+        )
+        if row is None:
+            raise HTTPException(status_code=404, detail="No evaluation found for resume_id")
+
+        transcript = (row.transcript or "").strip()
+
+        # Determine JD/Resume text
+        jd_txt = ""
+        resume_txt = ""
+
+        # Prefer parsed blob if available
+        if row.parsed:
+            try:
+                jd_txt = (row.parsed or {}).get("jd_txt") or jd_txt
+                resume_txt = (row.parsed or {}).get("resume_txt") or resume_txt
+            except Exception:
+                pass
+
+        # If still missing, reconstruct from recruiter+resume
+        if not jd_txt or not resume_txt:
+            resume_row: Resume | None = db.query(Resume).filter(Resume.resume_id == resume_id).first()
+            if resume_row is None:
+                raise HTTPException(status_code=404, detail="resume row not found")
+
+            recruiter_row: Recruiter | None = (
+                db.query(Recruiter)
+                .filter(Recruiter.resume_id == resume_id)
+                .order_by(Recruiter.jd_id.desc())
+                .first()
+            )
+
+            resume_path = resume_row.resume_path if resume_row else None
+            jd_path = recruiter_row.jd_file_path if recruiter_row else None
+            jd_dict = recruiter_row.jd if recruiter_row else None
+
+            # JD text
+            if not jd_txt:
+                tmp = ""
+                if jd_path:
+                    try:
+                        tmp = extract_text_from_path(jd_path)
+                    except HTTPException:
+                        tmp = ""
+                if not tmp and jd_dict:
+                    title = (jd_dict or {}).get("title") or ""
+                    desc = (jd_dict or {}).get("description") or ""
+                    tmp = f"{title}\n\n{desc}".strip()
+                jd_txt = tmp
+
+            # Resume text
+            if not resume_txt and resume_path:
+                try:
+                    resume_txt = extract_text_from_path(resume_path)
+                except HTTPException:
+                    resume_txt = ""
+
+        # Call evaluation function with transcript, JD, resume
+        try:
+            from backend.evaluation import call_comprehensive_evaluation
+        except Exception:
+            # Fallback: add backend directory to sys.path and import locally
+            try:
+                import sys as _sys
+                import os as _os
+                _sys.path.append(_os.path.dirname(__file__))
+            except Exception:
+                pass
+            from evaluation import call_comprehensive_evaluation
+
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise HTTPException(status_code=500, detail="OPENAI_API_KEY not configured")
+
+        result = call_comprehensive_evaluation(
+            api_key,
+            transcript,
+            jd_txt,
+            resume_txt,
+            None,
+            None,
+        )
+
+        return {
+            "evaluation_id": row.evaluation_id,
+            "resume_id": row.resume_id,
+            "jd_id": row.jd_id,
+            "result": result,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to run evaluation: {e}")
+
 # #
 # ------------------- Resume upload -------------------
 @app.post("/resume/upload")
@@ -257,7 +431,7 @@ async def upload_resume(
 
     file_bytes = await uploaded_file.read()
 
-    sb_url = ""
+    sb_url = "https://ceywatgfpiyfdhrqfbip.supabase.co"
     sb_service_key = ""
     sb_bucket = os.getenv("SUPABASE_BUCKET", "files")
     if not sb_url or not sb_service_key:
@@ -415,6 +589,35 @@ async def create_recruiter(
             existing.linkedin_url = linkedin_url
         existing.created_at = existing.created_at or datetime.utcnow()
 
+        # Compute and persist parsed blob
+        resume_row: Resume | None = db.query(Resume).filter(Resume.resume_id == existing.resume_id).first()
+        resume_path = resume_row.resume_path if resume_row else None
+        jd_path = existing.jd_file_path if existing else None
+        jd_dict = existing.jd if existing else None
+        try:
+            jd_txt_val = extract_text_from_path(jd_path) if jd_path else ""
+        except HTTPException:
+            jd_txt_val = ""
+        if not jd_txt_val and jd_dict:
+            title = (jd_dict or {}).get("title") or ""
+            desc = (jd_dict or {}).get("description") or ""
+            jd_txt_val = f"{title}\n\n{desc}".strip()
+        try:
+            resume_txt_val = extract_text_from_path(resume_path) if resume_path else ""
+        except HTTPException:
+            resume_txt_val = ""
+        existing.parsed = {
+            "resume_path": resume_path,
+            "jd_path": jd_path,
+            "questions": existing.questions,
+            "jd_dict": jd_dict,
+            "resume_txt": resume_txt_val,
+            "jd_txt": jd_txt_val,
+        }
+
+        # Also snapshot into evaluation table
+    
+
         db.add(existing)
         db.commit()
         db.refresh(existing)
@@ -427,6 +630,7 @@ async def create_recruiter(
             "questions": existing.questions,
             "linkedin_url": existing.linkedin_url,
             "created_at": existing.created_at,
+            "parsed": existing.parsed,
         }
 
     # Create new if none exists
@@ -438,6 +642,34 @@ async def create_recruiter(
         linkedin_url=linkedin_url,
         created_at=datetime.utcnow(),
     )
+    # Compute and persist parsed blob for new record
+    resume_row: Resume | None = db.query(Resume).filter(Resume.resume_id == rec.resume_id).first()
+    resume_path = resume_row.resume_path if resume_row else None
+    jd_path = rec.jd_file_path if rec else None
+    jd_dict = rec.jd if rec else None
+    try:
+        jd_txt_val = extract_text_from_path(jd_path) if jd_path else ""
+    except HTTPException:
+        jd_txt_val = ""
+    if not jd_txt_val and jd_dict:
+        title = (jd_dict or {}).get("title") or ""
+        desc = (jd_dict or {}).get("description") or ""
+        jd_txt_val = f"{title}\n\n{desc}".strip()
+    try:
+        resume_txt_val = extract_text_from_path(resume_path) if resume_path else ""
+    except HTTPException:
+        resume_txt_val = ""
+    rec.parsed = {
+        "resume_path": resume_path,
+        "jd_path": jd_path,
+        "questions": rec.questions,
+        "jd_dict": jd_dict,
+        "resume_txt": resume_txt_val,
+        "jd_txt": jd_txt_val,
+    }
+
+    # Snapshot into evaluation table
+   
     db.add(rec)
     db.commit()
     db.refresh(rec)
@@ -450,6 +682,7 @@ async def create_recruiter(
         "questions": rec.questions,
         "linkedin_url": rec.linkedin_url,
         "created_at": rec.created_at,
+        "parsed": rec.parsed,
     }
 
 
@@ -492,6 +725,36 @@ def get_recruiter_by_resume(resume_id: int, db: Session = Depends(get_db)):
         except HTTPException:
             resume_txt = ""
 
+    parsed_blob = {
+        "resume_path": resume_path,
+        "jd_path": jd_path,
+        "questions": questions_dict,
+        "jd_dict": jd_dict,
+        "resume_txt": resume_txt,
+        "jd_txt": jd_txt,
+    }
+
+    # Persist parsed blob on the recruiter row for future fast retrieval
+    if recruiter_row is not None:
+        try:
+            recruiter_row.parsed = parsed_blob
+            # Also snapshot into evaluation table (without transcript)
+            try:
+                eval_row = Evaluation(
+                    resume_id=recruiter_row.resume_id,
+                    jd_id=recruiter_row.jd_id,
+                    parsed=parsed_blob,
+                    transcript=None,
+                    created_at=datetime.utcnow(),
+                )
+                db.add(eval_row)
+            except Exception:
+                pass
+            # db.add(recruiter_row)
+            db.commit()
+        except Exception:
+            db.rollback()
+
     return {
         "resume": {
             "resume_id": resume_row.resume_id,
@@ -505,73 +768,14 @@ def get_recruiter_by_resume(resume_id: int, db: Session = Depends(get_db)):
             "questions": questions_dict,
             "linkedin_url": recruiter_row.linkedin_url,
             "created_at": recruiter_row.created_at,
+            "parsed": recruiter_row.parsed,
         },
-        "parsed": {
-            "resume_path": resume_path,
-            "jd_path": jd_path,
-            "questions": questions_dict,
-            "jd_dict": jd_dict,
-            "resume_txt": resume_txt,
-            "jd_txt": jd_txt,
-        },
+        "parsed": parsed_blob,
     }
 
 
-# ------------------- Bot control (Interview evaluation integration) -------------------
-class BotStartPayload(BaseModel):
-    jd_txt: Optional[str] = None
-    resume_txt: Optional[str] = None
 
 
-class BotTranscriptPayload(BaseModel):
-    session_id: str
-    text: str
-
-
-class BotStopPayload(BaseModel):
-    session_id: str
-
-
-@app.post("/bot/start")
-def bot_start(payload: BotStartPayload):
-    if bot_service is None:
-        raise HTTPException(status_code=500, detail="Bot service unavailable")
-    session_id = bot_service.start(jd_txt=payload.jd_txt or "", resume_txt=payload.resume_txt or "")
-    return {"session_id": session_id}
-
-
-@app.post("/bot/transcript")
-def bot_transcript(payload: BotTranscriptPayload):
-    if bot_service is None:
-        raise HTTPException(status_code=500, detail="Bot service unavailable")
-    try:
-        bot_service.add_transcript(payload.session_id, payload.text or "")
-    except KeyError:
-        raise HTTPException(status_code=404, detail="Invalid session_id")
-    return {"ok": True}
-
-
-@app.post("/bot/stop")
-def bot_stop(payload: BotStopPayload):
-    if bot_service is None:
-        raise HTTPException(status_code=500, detail="Bot service unavailable")
-    try:
-        evaluation = bot_service.stop_and_evaluate(payload.session_id)
-    except KeyError:
-        raise HTTPException(status_code=404, detail="Invalid session_id")
-    except RuntimeError as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    return {"evaluation": evaluation}
-
-
-@app.get("/bot/evaluation/{session_id}")
-def bot_get_evaluation(session_id: str):
-    if bot_service is None:
-        raise HTTPException(status_code=500, detail="Bot service unavailable")
-    evaluation = bot_service.get_evaluation(session_id)
-    if evaluation is None:
-        raise HTTPException(status_code=404, detail="Not found")
-    return {"evaluation": evaluation}
 
 # ------------------- WebRTC: Create ephemeral Realtime session token -------------------
 class WebRTCSessionRequest(BaseModel):
@@ -627,7 +831,7 @@ def create_webrtc_session(payload: WebRTCSessionRequest, response: Response):
                 print(f"[DEBUG] Successfully imported InterviewBot")
                 
                 # Create bot instance to generate instructions
-                bot = InterviewBot(api_key=api_key, voice="marin",language="en", interview_duration=payload.interview_duration or 6,)  # pyright: ignore[reportUndefinedVariable]
+                bot = InterviewBot(api_key=api_key, voice="marin",language="en", interview_duration=6)  # pyright: ignore[reportUndefinedVariable]
                 
                 # Set the context directly
                 bot.job_description = payload.jd_txt
@@ -640,7 +844,7 @@ def create_webrtc_session(payload: WebRTCSessionRequest, response: Response):
                     questions_list = list(payload.questions_dict.values())
                     bot._categorize_custom_questions(questions_list)
                 
-                # Generate comprehensive interview instructions
+                # Generate comprehensive int̉erview instructions
                 instructions = bot.get_interview_instructions()
                 body["instructions"] = instructions
             

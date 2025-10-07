@@ -537,6 +537,12 @@ const CompletedPage: React.FC<CompletedPageProps> = ({
                 <Edit3 size={16} />
                 <span>Review</span>
               </button>
+              <button
+                onClick={() => navigate('/results')}
+                className="border border-gray-300 text-gray-800 px-4 py-2 rounded-lg font-medium transition-colors hover:bg-gray-50"
+              >
+                See Results
+              </button>
             </div>
           )}
           {isSubmitted && (

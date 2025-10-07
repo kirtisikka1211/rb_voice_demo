@@ -39,12 +39,13 @@ function SegmentedTabs({ value, onChange }: { value: 'jobs' | 'questions' | 'pro
   const unselected = 'bg-transparent text-gray-600 border-gray-300/60 hover:bg-white/50';
   return (
     <div className="grid w-full grid-cols-4 gap-3">
+         <button className={`${base} ${value==='candidates'?selected:unselected}`} onClick={() => onChange('candidates')}>
+        <FileText className="w-4 h-4" /> Candidate Info
+      </button>
       <button className={`${base} ${value==='jobs'?selected:unselected}`} onClick={() => onChange('jobs')}>
         <FileText className="w-4 h-4" /> Job Descriptions
       </button>
-      <button className={`${base} ${value==='candidates'?selected:unselected}`} onClick={() => onChange('candidates')}>
-        <FileText className="w-4 h-4" /> Candidate Info
-      </button>
+   
       <button className={`${base} ${value==='questions'?selected:unselected}`} onClick={() => onChange('questions')}>
         <MessageSquare className="w-4 h-4" /> Questions
       </button>
@@ -211,15 +212,17 @@ export default function RecruiterDashboard() {
                 const data = await apiService.getRecruiterByResumeId(resumeId);
                 // Print the full JSON bundle
                 console.log('Recruiter Bundle JSON:', JSON.stringify(data, null, 2));
-                // Stash parsed texts in sessionStorage for Preparing/Active pages
+                // Stash ids and parsed texts in sessionStorage for Preparing/Active pages
                 try {
+                  if (data?.resume?.resume_id) sessionStorage.setItem('rb_resume_id', String(data.resume.resume_id));
+                  if (data?.recruiter?.jd_id) sessionStorage.setItem('rb_jd_id', String(data.recruiter.jd_id));
                   if (data?.parsed?.resume_txt) sessionStorage.setItem('rb_resume_txt', data.parsed.resume_txt);
                   if (data?.parsed?.jd_txt) sessionStorage.setItem('rb_jd_txt', data.parsed.jd_txt);
                   if (data?.parsed?.questions) sessionStorage.setItem('rb_questions_dict', JSON.stringify(data.parsed.questions));
                 } catch {}
-                openModal('Fetched recruiter data JSON. Check console.', () => {
+                openModal('', () => {
                   try {
-                    navigate('/interview/idle?type=technical');
+                    navigate('/webRTC');
                   } catch {
                     window.location.href = 'http://localhost:5173/interview/idle?type=technical';
                   }

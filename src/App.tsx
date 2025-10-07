@@ -14,6 +14,7 @@ import CompletedPage from './components/CompletedPage';
 // import PreScreenRecruiterPage from './components/PreScreenRecruiterPage';
 import apiService from './services/api';
 import InterviewWebRTC from './components/InterviewWebRTC';
+import ResultsPage from './components/ResultsPage';
 
 interface InterviewScript {
   questions?: Array<{
@@ -49,6 +50,19 @@ const InterviewPageWrapper: React.FC<{ userEmail: string; onComplete: (script: I
   return (
     <InterviewPage 
       userEmail={userEmail} 
+      onComplete={onComplete}
+      interviewType={interviewType}
+    />
+  );
+};
+
+// Wrapper for WebRTC page to provide required props
+const InterviewWebRTCWrapper: React.FC<{ userEmail: string; onComplete: (script: InterviewScript) => void }> = ({ userEmail, onComplete }) => {
+  const [searchParams] = useSearchParams();
+  const interviewType = searchParams.get('type') as 'pre-screen' | 'technical' || 'pre-screen';
+  return (
+    <InterviewWebRTC
+      userEmail={userEmail}
       onComplete={onComplete}
       interviewType={interviewType}
     />
@@ -268,6 +282,19 @@ function App() {
             } 
           />
 
+          <Route 
+            path="/results" 
+            element={
+              !userEmail ? (
+                <Navigate to="/login" replace />
+              ) : (
+                <Layout userEmail={userEmail} onLogout={handleLogout}>
+                  <ResultsPage />
+                </Layout>
+              )
+            } 
+          />
+
           {/* Recruiter Route */}
           {/* <Route 
             path="/recruiter" 
@@ -290,7 +317,10 @@ function App() {
                 <Navigate to="/login" replace />
               ) : (
                 <Layout userEmail={userEmail} onLogout={handleLogout}>
-                  <InterviewWebRTC/>
+                  <InterviewWebRTCWrapper 
+                    userEmail={userEmail}
+                    onComplete={handleInterviewComplete}
+                  />
                 </Layout>
               )
             } 

@@ -17,7 +17,7 @@ def extract_resume_content(resume_text: str) -> str:
     return "Ask about technical projects mentioned in resume"
 
 def extract_job_title(jd_text: str) -> str:
-    print("job title extracted", jd_text)
+    # print("job title extracted", jd_text)
     match = re.search(r'(?:job title|position)\s*:?\s*([^\n]+)', jd_text, re.I)
   
     return match.group(1).strip() if match else "Ai engineer Intern"
@@ -40,11 +40,15 @@ def get_time_greeting() -> str:
 
 def generate_interview_questions(api_key: str, jd: str, resume: str) -> dict:
     client = openai.OpenAI(api_key=api_key)
-    prompt = QUESTION_GENERATION_PROMPT.format(job_description=jd[:2000], candidate_resume=resume[:2000])
+    
+    # Use string replacement instead of .format() to avoid KeyError with curly braces
+    prompt = QUESTION_GENERATION_PROMPT.replace('{job_description}', jd[:2000]).replace('{candidate_resume}', resume[:2000])
+    prompt += "\n\nIMPORTANT: Also extract the exact job title from the job description and include it as 'job_title' field in your JSON response."
+    
     try:
         resp = client.chat.completions.create(
             model="gpt-4o",
-            messages=[{"role": "system", "content": "You are an expert technical interviewer who creates challenging, fair, and role-appropriate interview questions. Always respond with valid JSON."},
+            messages=[{"role": "system", "content": "You are an expert technical interviewer who creates challenging, fair, and role-appropriate interview questions. Always respond with valid JSON that includes job_title field."},
                       {"role": "user", "content": prompt}],
             temperature=0.3,
             max_tokens=2000
@@ -58,6 +62,11 @@ def generate_interview_questions(api_key: str, jd: str, resume: str) -> dict:
         if not txt:
             return fallback_questions()
         questions = json.loads(txt)
+        
+        # Debug: Show LLM-extracted job title
+        job_title = questions.get('job_title', 'Data Analyst')
+        print(f"🎯 LLM Extracted Job Title: {job_title}")
+        
         return questions
     except Exception:
         return fallback_questions()

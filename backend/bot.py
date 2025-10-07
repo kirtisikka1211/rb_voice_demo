@@ -396,7 +396,7 @@ class InterviewBot:
                 "type": "server_vad",
                 "threshold": 0.76, # Slightly less sensitive for cleaner audio
                 "prefix_padding_ms": 900,  # More padding for complete speech capture
-                "silence_duration_ms": 1500, # Longer pause for technical explanations
+                "silence_duration_ms": 1200, # Longer pause for technical explanations
                 "create_response": True
             }
             

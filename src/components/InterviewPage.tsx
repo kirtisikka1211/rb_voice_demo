@@ -64,7 +64,7 @@ const technicalQuestions: InterviewQuestion[] = [
 const technicalAnswers: string[] = [
   "Synchronous code blocks the thread until it finishes, while asynchronous code schedules work and continues executing. I'd use synchronous code for simple, quick operations and async for I/O-bound tasks like network requests, using promises/async-await to avoid blocking the UI.",
   "A closure is when a function captures variables from its lexical scope even after the outer function has returned. A common use case is encapsulating private state, like a function that returns increment/decrement handlers sharing the same counter variable.",
-  "Profile components to find .",
+  "Profile components o find .",
   "Resources:....",
   "Inspect e....." 
 ];
