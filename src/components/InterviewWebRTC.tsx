@@ -9,6 +9,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '../services/api';
 
 interface ChatMessage {
   id: string;
@@ -108,7 +109,7 @@ const InterviewWebRTC: React.FC<Props> = ({ userEmail: _userEmail, onComplete, i
       const payload: any = { transcript: params.transcript };
       if (params.jdId) payload.jd_id = params.jdId;
       if (params.resumeId) payload.resume_id = params.resumeId;
-      const res = await fetch('http://localhost:8000/evaluation/transcript', {
+      const res = await fetch(`${API_BASE_URL}/evaluation/transcript`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -164,7 +165,7 @@ const InterviewWebRTC: React.FC<Props> = ({ userEmail: _userEmail, onComplete, i
         questions_count: qDict ? Object.keys(qDict).length : 0
       });
 
-      const sessionRes = await fetch('http://localhost:8000/webrtc/session', {
+      const sessionRes = await fetch(`${API_BASE_URL}/webrtc/session`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -224,7 +224,7 @@ export default function RecruiterDashboard() {
                   try {
                     navigate('/webRTC');
                   } catch {
-                    window.location.href = 'http://localhost:5173/interview/idle?type=technical';
+                    window.location.href = `${window.location.origin.replace(/\/$/, '')}/interview/idle?type=technical`;
                   }
                 });
               } catch (e) {

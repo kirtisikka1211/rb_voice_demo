@@ -1,7 +1,7 @@
 # session_manager.py
 import json
 from datetime import datetime
-from evaluation import save_json
+from backend.evaluation import save_json
 
 class SessionManager:
     def __init__(self, voice: str, interview_mode: bool):

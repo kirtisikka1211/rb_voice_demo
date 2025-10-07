@@ -2,7 +2,7 @@
 import json
 import openai
 from datetime import datetime
-from prompts_repo import EVALUATION_PROMPT
+from backend.prompts_repo import EVALUATION_PROMPT
 import logging
 import os
 

@@ -1,6 +1,6 @@
 # phase_manager.py
 from datetime import datetime
-from interview_utils import extract_candidate_name
+from backend.interview_utils import extract_candidate_name
 
 class PhaseManager:
     def __init__(self, interview_duration: int):

@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '../services/api';
 import { useEffect, useMemo, useState } from 'react';
 import { FileText, Loader2 } from 'lucide-react';
 
@@ -16,7 +17,7 @@ export default function ResultsPage() {
     }
     (async () => {
       try {
-        const res = await fetch(`http://localhost:8000/evaluation/${resumeId}`);
+        const res = await fetch(`${API_BASE_URL}/evaluation/${resumeId}`);
         if (!res.ok) {
           const txt = await res.text();
           throw new Error(`${res.status} ${txt}`);

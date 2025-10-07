@@ -12,18 +12,18 @@ import openai
 import websockets
 import numpy as np
 import logging
-from audio_manager import AudioManager
-from interview_utils import (
+from backend.audio_manager import AudioManager
+from backend.interview_utils import (
     extract_resume_content,
     extract_job_title,
     extract_candidate_name,
     get_time_greeting,
     generate_interview_questions
 )
-from phase_manager import PhaseManager
-from session_manager import SessionManager
-from evaluation import call_comprehensive_evaluation, save_json
-from prompts_repo import (
+from backend.phase_manager import PhaseManager
+from backend.session_manager import SessionManager
+from backend.evaluation import call_comprehensive_evaluation, save_json
+from backend.prompts_repo import (
     INTERVIEW_BASE_INSTRUCTIONS,
     SHORT_INTERVIEW_STRUCTURE,
     MEDIUM_INTERVIEW_STRUCTURE, 
@@ -31,7 +31,7 @@ from prompts_repo import (
     STANDARD_CONVERSATION_INSTRUCTIONS,
     TRANSCRIPTION_PROMPT_TEMPLATE
 )
-from logger_config import get_logger
+from backend.logger_config import get_logger
 
 logger = get_logger("InterviewBot")
 

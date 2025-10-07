@@ -3,7 +3,7 @@ import re
 import json
 from datetime import datetime
 import openai
-from prompts_repo import QUESTION_GENERATION_PROMPT, INTERVIEW_BASE_INSTRUCTIONS, TRANSCRIPTION_PROMPT_TEMPLATE
+from backend.prompts_repo import QUESTION_GENERATION_PROMPT, INTERVIEW_BASE_INSTRUCTIONS, TRANSCRIPTION_PROMPT_TEMPLATE
 
 def extract_resume_content(resume_text: str) -> str:
     project_patterns = [

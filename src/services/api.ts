@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Base URL for the backend API
-const API_BASE_URL = 'http://localhost:8000';
+export const API_BASE_URL = 'http://localhost:8000';
 
 // Axios instance
 const api = axios.create({
@@ -53,7 +53,7 @@ export const apiService = {
   async uploadResume(file: File): Promise<{ resume_id: number; resume_path: string; uploaded_at?: string }> {
     const formData = new FormData();
     formData.append('uploaded_file', file);
-    const response = await axios.post(`${API_BASE_URL}/resume/upload`, formData, {
+    const response = await api.post(`/resume/upload`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
@@ -82,7 +82,7 @@ export const apiService = {
     if (payload.linkedinUrl != null) form.append('linkedin_url', payload.linkedinUrl);
     if (payload.questionsJson != null) form.append('questions_json', JSON.stringify(payload.questionsJson));
     if (payload.jdFile) form.append('jd_file', payload.jdFile);
-    const response = await axios.post(`${API_BASE_URL}/recruiter`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
+    const response = await api.post(`/recruiter`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
     return response.data;
   },
   async getRecruiterByResumeId(resumeId: number): Promise<{
@@ -130,7 +130,7 @@ export const apiService = {
     formData.append('session_id', String(getSessionId()));
 
     // Use a separate axios call to set multipart headers automatically
-    const response = await axios.post(`${API_BASE_URL}/files`, formData, {
+    const response = await api.post(`/files`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
@@ -149,7 +149,7 @@ export const apiService = {
     form.append('title', title);
     form.append('description', description);
     form.append('session_id', String(getSessionId()));
-    const response = await axios.post(`${API_BASE_URL}/files/jd`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
+    const response = await api.post(`/files/jd`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
     return response.data;
   },
 
@@ -158,7 +158,7 @@ export const apiService = {
     form.append('candidate_id', String(candidateId));
     form.append('linkedin_url', linkedinUrl);
     form.append('session_id', String(getSessionId()));
-    const response = await axios.post(`${API_BASE_URL}/files/linkedin`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
+    const response = await api.post(`/files/linkedin`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
     return response.data;
   },
 
@@ -168,7 +168,7 @@ export const apiService = {
     form.append('file_type', 'question');
     form.append('question_json', JSON.stringify(questions));
     form.append('session_id', String(getSessionId()));
-    const response = await axios.post(`${API_BASE_URL}/files`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
+    const response = await api.post(`/files`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
     return response.data;
   },
 
@@ -186,7 +186,7 @@ export const apiService = {
     if (payload.jdDescription != null) form.append('jd_description', payload.jdDescription);
     if (payload.questionsJson != null) form.append('questions_json', JSON.stringify(payload.questionsJson));
     if (payload.linkedinUrl != null) form.append('linkedin_url', payload.linkedinUrl);
-    const response = await axios.post(`${API_BASE_URL}/files/submit`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
+    const response = await api.post(`/files/submit`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
     return response.data;
   },
 };
