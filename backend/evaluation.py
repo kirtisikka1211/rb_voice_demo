@@ -62,14 +62,14 @@ def call_comprehensive_evaluation(api_key: str, conversation_text: str, job_desc
         _normalize_score('technical_competency')
         _normalize_score('communication_assessment')
         
-        # Add metadata (kept for internal reference)
-        data['evaluation_metadata'] = {
-            'timestamp': datetime.now().isoformat(),
-            'evaluation_type': 'transcript_only',
-            'duration_seconds': (datetime.now() - interview_start_time).total_seconds() if interview_start_time else None
-        }
+        # # Add metadata (kept for internal reference)
+        # data['evaluation_metadata'] = {
+        #     'timestamp': datetime.now().isoformat(),
+        #     'evaluation_type': 'transcript_only',
+        #     'duration_seconds': (datetime.now() - interview_start_time).total_seconds() if interview_start_time else None
+        # }
         
-        return data
+        # return data
         
     except Exception as e:
         logger.error(f"Comprehensive evaluation failed: {e}")
